@@ -3,158 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tung Tung Sahur: Obby Challenge</title>
+    <title>Tung Tung Brainrot Pixel HD</title>
     <style>
-        :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
-        body { margin: 0; overflow: hidden; background: #87CEEB; touch-action: none; font-family: 'Arial', sans-serif; }
-        #hud {
-            position: absolute; top: 30px; width: 100%; display: flex; 
-            justify-content: center; color: white; font-size: 24px; font-weight: bold;
-            text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 10;
+        :root { --safe-top: env(safe-area-inset-top, 20px); --safe-bottom: env(safe-area-inset-bottom, 30px); }
+        body { margin: 0; overflow: hidden; background: #1a1a1a; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        canvas { display: block; image-rendering: pixelated; }
+        
+        #ui {
+            position: absolute; top: calc(var(--safe-top) + 20px); width: 100%;
+            display: flex; justify-content: space-around; color: white;
+            font-size: 24px; text-shadow: 3px 3px 0 #000; pointer-events: none;
         }
-        /* Fixed iPad Controls - Floating over the safe area */
-        #controls {
-            position: absolute; bottom: calc(var(--safe-bottom) + 50px);
+        
+        /* iPad Controls: High enough to see clearly */
+        .controls {
+            position: absolute; bottom: calc(var(--safe-bottom) + 60px);
             width: 100%; display: flex; justify-content: space-between;
-            padding: 0 40px; box-sizing: border-box; z-index: 20;
+            padding: 0 40px; box-sizing: border-box;
         }
-        .joy-stick {
-            width: 120px; height: 120px; background: rgba(255,255,255,0.2);
-            border: 4px solid #fff; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; backdrop-filter: blur(5px);
+        .dir-pad { display: flex; gap: 15px; }
+        .btn {
+            width: 100px; height: 100px; border-radius: 20px; border: 4px solid #fff;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 18px; box-shadow: 0 8px 0 #000;
         }
-        .btn-jump {
-            width: 100px; height: 100px; background: #ffcc00;
-            border: 5px solid #000; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; font-weight: bold;
-            box-shadow: 0 8px 0 #997a00; active { transform: translateY(4px); box-shadow: 0 4px 0 #997a00; }
-        }
-        #signature { position: absolute; top: 10px; right: 20px; color: #fff; opacity: 0.6; }
+        #leftBtn, #rightBtn { background: #4facfe; }
+        #jumpBtn { background: #ff0066; width: 130px; height: 130px; border-radius: 50%; }
+        .btn:active { transform: translateY(5px); box-shadow: 0 3px 0 #000; }
+        
+        #wicki { position: absolute; top: 10px; right: 20px; color: #fff; opacity: 0.5; font-size: 14px; }
     </style>
 </head>
 <body>
 
-<div id="hud">LEVEL <span id="lvl">1</span></div>
-<div id="signature">by wicki</div>
-
-<div id="controls">
-    <div class="joy-stick" id="movePad">MOVE</div>
-    <div class="btn-jump" id="jumpBtn">JUMP</div>
+<div id="ui">
+    <div>SCORE: <span id="score">0</span></div>
+    <div>BY WICKI</div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<canvas id="canvas"></canvas>
+
+<div class="controls">
+    <div class="dir-pad">
+        <div class="btn" id="leftBtn">LEFT</div>
+        <div class="btn" id="rightBtn">RIGHT</div>
+    </div>
+    <div class="btn" id="jumpBtn">JUMP</div>
+</div>
 
 <script>
-    // 1. SCENE SETUP
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x4facfe);
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, frame = 0, score = 0;
 
-    // 2. LIGHTING
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 10, 5);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040, 2));
-
-    // 3. PLAYER (The Tung Tung 3D Model)
-    const playerGroup = new THREE.Group();
-    // Hog
-    const hog = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 1.2), new THREE.MeshStandardMaterial({ color: 0xffafcc }));
-    hog.position.y = 0.25;
-    playerGroup.add(hog);
-    // Tung Tung Rider
-    const rider = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0xd2b48c }));
-    rider.position.y = 0.9;
-    playerGroup.add(rider);
-    scene.add(playerGroup);
-
-    // 4. OBBY LEVEL GENERATION
-    let platforms = [];
-    function createLevel() {
-        for(let i=0; i<20; i++) {
-            const geo = new THREE.BoxGeometry(2, 0.5, 2);
-            const mat = new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x87af3a : 0xff0066 });
-            const p = new THREE.Mesh(geo, mat);
-            p.position.set(0, 0, -i * 5);
-            // Add some "Brainrot" chaos - random offsets
-            if(i > 3) p.position.x = (Math.random() - 0.5) * 4;
-            scene.add(p);
-            platforms.push(p);
-        }
+    function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
     }
-    createLevel();
+    window.addEventListener('resize', resize);
+    resize();
 
-    // 5. PHYSICS & CONTROLS
-    let velocityY = 0;
-    let isJumping = false;
-    let moveForward = false;
-    const speed = 0.15;
+    // 24-Bit Style Graphics
+    const player = {
+        x: 0, z: 0, y: 0, dy: 0, targetX: 0,
+        update() {
+            // Gravity & Jump
+            this.dy -= 0.8;
+            this.y += this.dy;
+            if (this.y < 0) { this.y = 0; this.dy = 0; }
+            
+            // Smooth X movement
+            this.x += (this.targetX - this.x) * 0.2;
+            this.z += 0.1; // Auto forward
+            score = Math.floor(this.z * 10);
+            document.getElementById('score').innerText = score;
+        },
+        draw() {
+            // Convert 3D to Isometric 2D
+            const screenX = w/2 + (this.x) * 50;
+            const screenY = h/2 + (this.y * -1.5) + 100;
+            
+            // Draw Tung Tung (The Log)
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            
+            // Log Body
+            ctx.fillStyle = '#d2b48c'; // Wood
+            ctx.fillRect(-25, -70, 50, 80);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
+            ctx.strokeRect(-25, -70, 50, 80);
+            
+            // Brainrot Eyes
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-15, -55, 12, 12); ctx.fillRect(5, -55, 12, 12);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-11, -51, 4, 4); ctx.fillRect(9, -51, 4, 4);
+            
+            // Mouth
+            ctx.fillRect(-10, -30, 20, 5);
+            ctx.restore();
+        }
+    };
 
-    camera.position.set(0, 3, 5);
+    const platforms = [];
+    for(let i=0; i<10; i++) {
+        platforms.push({ x: (Math.random()-0.5)*6, z: i*4, color: i%2===0?'#ff0066':'#33ff33' });
+    }
 
-    function checkCollision() {
-        let onGround = false;
+    function drawPlatforms() {
         platforms.forEach(p => {
-            if (Math.abs(playerGroup.position.x - p.position.x) < 1.2 &&
-                Math.abs(playerGroup.position.z - p.position.z) < 1.2 &&
-                playerGroup.position.y >= p.position.y + 0.2 &&
-                playerGroup.position.y <= p.position.y + 0.6) {
-                onGround = true;
-                playerGroup.position.y = p.position.y + 0.5;
+            const relZ = p.z - player.z;
+            if(relZ < -5) { // Recycle platform
+                p.z += 40;
+                p.x = (Math.random()-0.5)*8;
+            }
+            
+            const screenX = w/2 + (p.x - player.x) * 50;
+            const screenY = h/2 + (relZ) * 80 + 150;
+            const size = 100 / (1 + relZ*0.1);
+
+            if(relZ > -2 && relZ < 15) {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(screenX - size/2, screenY, size, 20);
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+                ctx.strokeRect(screenX - size/2, screenY, size, 20);
             }
         });
-        return onGround;
     }
 
-    // Input Handling
-    document.getElementById('jumpBtn').addEventListener('touchstart', () => {
-        if(!isJumping) { velocityY = 0.2; isJumping = true; }
+    // iPad Controls
+    document.getElementById('leftBtn').addEventListener('touchstart', (e) => { e.preventDefault(); player.targetX -= 1; });
+    document.getElementById('rightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); player.targetX += 1; });
+    document.getElementById('jumpBtn').addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        if(player.y === 0) player.dy = 15; 
     });
-    
-    let touchX = 0;
-    document.getElementById('movePad').addEventListener('touchstart', () => moveForward = true);
-    document.getElementById('movePad').addEventListener('touchend', () => moveForward = false);
 
-    // 6. GAME LOOP
-    function animate() {
-        requestAnimationFrame(animate);
+    function loop() {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0,0,w,h);
+        
+        // Draw Background Stars
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<20; i++) ctx.fillRect((i*137)%w, (i*frame/10)%h, 2, 2);
 
-        // Gravity
-        velocityY -= 0.01;
-        playerGroup.position.y += velocityY;
+        drawPlatforms();
+        player.update();
+        player.draw();
 
-        if (checkCollision() && velocityY <= 0) {
-            velocityY = 0;
-            isJumping = false;
-        }
-
-        // Movement
-        if (moveForward) {
-            playerGroup.position.z -= speed;
-        }
-
-        // Camera Follow
-        camera.position.lerp(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 3, playerGroup.position.z + 6), 0.1);
-        camera.lookAt(playerGroup.position);
-
-        // Fall off
-        if (playerGroup.position.y < -5) {
-            playerGroup.position.set(0, 2, 0);
-            velocityY = 0;
-        }
-
-        renderer.render(scene, camera);
+        requestAnimationFrame(loop);
     }
-    animate();
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    loop();
 </script>
 </body>
 </html>
