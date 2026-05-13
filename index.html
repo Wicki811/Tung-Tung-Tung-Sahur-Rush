@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tung Tung Road Rush</title>
+    <style>
+        :root { --game-height: 400px; }
+        body { 
+            margin: 0; padding: 0; overflow: hidden; 
+            background: #1a1a1a; font-family: 'Arial Black', sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        #game-container {
+            position: relative; width: 800px; height: var(--game-height);
+            background: linear-gradient(#87CEEB, #E0F6FF);
+            border: 4px solid #333; border-radius: 10px; overflow: hidden;
+        }
+        canvas { display: block; }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
+            color: #fff; text-shadow: 2px 2px 0px #000; pointer-events: none;
+        }
+        .message {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; color: white; background: rgba(0,0,0,0.7);
+            padding: 20px; border-radius: 10px; display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui-layer">
+        <div style="font-size: 24px;">SCORE: <span id="score">0</span></div>
+    </div>
+    <div id="start-msg" class="message" style="display: block;">
+        <h1>TUNG TUNG ROAD RUSH</h1>
+        <p>Press SPACE or TAP to Jump</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const startMsg = document.getElementById('start-msg');
+
+canvas.width = 800;
+canvas.height = 400;
+
+let gameState = 'START';
+let score = 0;
+let gameSpeed = 6;
+let frames = 0;
+
+const player = {
+    x: 80, y: 300, w: 60, h: 70,
+    dy: 0, jump: -12, gravity: 0.6, grounded: false,
+    draw() {
+        // Simple Sprite Placeholder (Tung Tung on Hog)
+        ctx.fillStyle = '#ffc0cb'; // Hog
+        ctx.fillRect(this.x, this.y + 30, this.w, 40);
+        ctx.fillStyle = '#d2b48c'; // Tung Tung
+        ctx.fillRect(this.x + 15, this.y, 30, 40);
+        ctx.fillStyle = '#000'; // Eyes
+        ctx.fillRect(this.x + 25, this.y + 10, 5, 5);
+        ctx.fillRect(this.x + 35, this.y + 10, 5, 5);
+    },
+    update() {
+        if (gameState !== 'PLAYING') return;
+        this.dy += this.gravity;
+        this.y += this.dy;
+        if (this.y > 300) { this.y = 300; this.dy = 0; this.grounded = true; }
+    }
+};
+
+let obstacles = [];
+function spawnObstacle() {
+    let type = Math.random() > 0.5 ? 'cannon' : 'crate';
+    obstacles.push({ x: canvas.width, y: 320, w: 40, h: 50, type });
+}
+
+function reset() {
+    score = 0; obstacles = []; gameSpeed = 6; player.y = 300;
+    scoreEl.innerText = score;
+}
+
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw Road
+    ctx.fillStyle = '#777';
+    ctx.fillRect(0, 370, canvas.width, 30);
+
+    player.update();
+    player.draw();
+
+    if (gameState === 'PLAYING') {
+        frames++;
+        if (frames % 100 === 0) spawnObstacle();
+        if (frames % 500 === 0) gameSpeed += 0.5;
+
+        obstacles.forEach((o, i) => {
+            o.x -= gameSpeed;
+            ctx.fillStyle = o.type === 'cannon' ? '#333' : '#8B4513';
+            ctx.fillRect(o.x, o.y, o.w, o.h);
+
+            // Collision
+            if (player.x < o.x + o.w && player.x + player.w > o.x &&
+                player.y < o.y + o.h && player.y + player.h > o.y) {
+                gameState = 'START';
+                startMsg.style.display = 'block';
+            }
+
+            if (o.x + o.w < 0) {
+                obstacles.splice(i, 1);
+                score++;
+                scoreEl.innerText = score;
+            }
+        });
+    }
+
+    requestAnimationFrame(loop);
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        if (gameState === 'START') {
+            reset();
+            gameState = 'PLAYING';
+            startMsg.style.display = 'none';
+        } else if (player.grounded) {
+            player.dy = player.jump;
+            player.grounded = false;
+        }
+    }
+});
+
+loop();
+</script>
+</body>
+</html>
