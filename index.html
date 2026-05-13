@@ -2,143 +2,179 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tung Tung Road Rush</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tung Tung iPad Edition</title>
     <style>
-        :root { --game-height: 400px; }
         body { 
             margin: 0; padding: 0; overflow: hidden; 
             background: #1a1a1a; font-family: 'Arial Black', sans-serif;
-            display: flex; justify-content: center; align-items: center; height: 100vh;
+            touch-action: none; /* Prevents zooming/scrolling while playing */
         }
-        #game-container {
-            position: relative; width: 800px; height: var(--game-height);
-            background: linear-gradient(#87CEEB, #E0F6FF);
-            border: 4px solid #333; border-radius: 10px; overflow: hidden;
+        canvas { display: block; background: #87CEEB; }
+        #ui {
+            position: absolute; top: 20px; left: 20px;
+            color: white; font-size: 30px; text-shadow: 3px 3px 0 #000;
+            pointer-events: none;
         }
-        canvas { display: block; }
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
-            color: #fff; text-shadow: 2px 2px 0px #000; pointer-events: none;
+        .menu {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center; color: white;
+            background: rgba(0,0,0,0.8); padding: 30px;
+            border-radius: 20px; border: 5px solid #ffcc00;
+            width: 80%; max-width: 400px;
         }
-        .message {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; color: white; background: rgba(0,0,0,0.7);
-            padding: 20px; border-radius: 10px; display: none;
+        button {
+            padding: 15px 30px; font-size: 20px; font-weight: bold;
+            background: #ffcc00; border: none; border-radius: 10px;
+            cursor: pointer; margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="ui-layer">
-        <div style="font-size: 24px;">SCORE: <span id="score">0</span></div>
+    <div id="ui">SCORE: <span id="score">0</span></div>
+
+    <div id="start-menu" class="menu">
+        <h1>TUNG TUNG RUSH</h1>
+        <p>TAP SCREEN TO JUMP</p>
+        <button onclick="startGame()">START GAME</button>
     </div>
-    <div id="start-msg" class="message" style="display: block;">
-        <h1>TUNG TUNG ROAD RUSH</h1>
-        <p>Press SPACE or TAP to Jump</p>
-    </div>
+
     <canvas id="gameCanvas"></canvas>
-</div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('score');
-const startMsg = document.getElementById('start-msg');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const startMenu = document.getElementById('start-menu');
 
-canvas.width = 800;
-canvas.height = 400;
-
-let gameState = 'START';
-let score = 0;
-let gameSpeed = 6;
-let frames = 0;
-
-const player = {
-    x: 80, y: 300, w: 60, h: 70,
-    dy: 0, jump: -12, gravity: 0.6, grounded: false,
-    draw() {
-        // Simple Sprite Placeholder (Tung Tung on Hog)
-        ctx.fillStyle = '#ffc0cb'; // Hog
-        ctx.fillRect(this.x, this.y + 30, this.w, 40);
-        ctx.fillStyle = '#d2b48c'; // Tung Tung
-        ctx.fillRect(this.x + 15, this.y, 30, 40);
-        ctx.fillStyle = '#000'; // Eyes
-        ctx.fillRect(this.x + 25, this.y + 10, 5, 5);
-        ctx.fillRect(this.x + 35, this.y + 10, 5, 5);
-    },
-    update() {
-        if (gameState !== 'PLAYING') return;
-        this.dy += this.gravity;
-        this.y += this.dy;
-        if (this.y > 300) { this.y = 300; this.dy = 0; this.grounded = true; }
+    // Resize canvas for iPad
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
     }
-};
+    window.addEventListener('resize', resize);
+    resize();
 
-let obstacles = [];
-function spawnObstacle() {
-    let type = Math.random() > 0.5 ? 'cannon' : 'crate';
-    obstacles.push({ x: canvas.width, y: 320, w: 40, h: 50, type });
-}
+    let gameState = 'START';
+    let score = 0;
+    let gameSpeed = 6;
+    let frames = 0;
 
-function reset() {
-    score = 0; obstacles = []; gameSpeed = 6; player.y = 300;
-    scoreEl.innerText = score;
-}
+    const player = {
+        x: 100, y: 0, w: 70, h: 90,
+        dy: 0, jump: -15, gravity: 0.8, grounded: false,
+        draw() {
+            // Draw Tung Tung (Brown Cylinder)
+            ctx.fillStyle = '#d2b48c';
+            ctx.fillRect(this.x + 15, this.y, 40, 50);
+            
+            // Draw Hog (Pink Body)
+            ctx.fillStyle = '#ffc0cb';
+            ctx.fillRect(this.x, this.y + 45, 70, 45);
+            
+            // Draw Bat
+            ctx.fillStyle = '#8B4513';
+            ctx.save();
+            ctx.translate(this.x + 60, this.y + 20);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(0, 0, 10, 50);
+            ctx.restore();
+        },
+        update() {
+            if (gameState !== 'PLAYING') return;
+            this.dy += this.gravity;
+            this.y += this.dy;
 
-function loop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw Road
-    ctx.fillStyle = '#777';
-    ctx.fillRect(0, 370, canvas.width, 30);
-
-    player.update();
-    player.draw();
-
-    if (gameState === 'PLAYING') {
-        frames++;
-        if (frames % 100 === 0) spawnObstacle();
-        if (frames % 500 === 0) gameSpeed += 0.5;
-
-        obstacles.forEach((o, i) => {
-            o.x -= gameSpeed;
-            ctx.fillStyle = o.type === 'cannon' ? '#333' : '#8B4513';
-            ctx.fillRect(o.x, o.y, o.w, o.h);
-
-            // Collision
-            if (player.x < o.x + o.w && player.x + player.w > o.x &&
-                player.y < o.y + o.h && player.y + player.h > o.y) {
-                gameState = 'START';
-                startMsg.style.display = 'block';
+            const groundY = canvas.height - 140;
+            if (this.y > groundY) {
+                this.y = groundY;
+                this.dy = 0;
+                this.grounded = true;
             }
+        }
+    };
 
-            if (o.x + o.w < 0) {
-                obstacles.splice(i, 1);
-                score++;
-                scoreEl.innerText = score;
-            }
+    let obstacles = [];
+    function spawnObstacle() {
+        const h = 60;
+        obstacles.push({
+            x: canvas.width,
+            y: canvas.height - 110 - h,
+            w: 50, h: h,
+            color: Math.random() > 0.5 ? '#333' : '#5C4033'
         });
     }
 
-    requestAnimationFrame(loop);
-}
+    function startGame() {
+        score = 0;
+        obstacles = [];
+        gameSpeed = 7;
+        gameState = 'PLAYING';
+        startMenu.style.display = 'none';
+        player.y = canvas.height - 300;
+    }
 
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
-        if (gameState === 'START') {
-            reset();
-            gameState = 'PLAYING';
-            startMsg.style.display = 'none';
-        } else if (player.grounded) {
+    function jump() {
+        if (gameState === 'PLAYING' && player.grounded) {
             player.dy = player.jump;
             player.grounded = false;
+        } else if (gameState === 'OVER') {
+            startGame();
         }
     }
-});
 
-loop();
+    // Touch Support for iPad
+    window.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // Prevents flickering
+        jump();
+    }, { passive: false });
+
+    // Keyboard Support
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') jump();
+    });
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Sky/Grass
+        ctx.fillStyle = '#4CAF50'; // Grass
+        ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+        player.update();
+        player.draw();
+
+        if (gameState === 'PLAYING') {
+            frames++;
+            if (frames % 90 === 0) spawnObstacle();
+            
+            obstacles.forEach((o, i) => {
+                o.x -= gameSpeed;
+                ctx.fillStyle = o.color;
+                ctx.fillRect(o.x, o.y, o.w, o.h);
+
+                // Collision
+                if (player.x < o.x + o.w && player.x + player.w > o.x &&
+                    player.y < o.y + o.h && player.y + player.h > o.y) {
+                    gameState = 'START';
+                    startMenu.style.display = 'block';
+                    startMenu.innerHTML = `<h1>GAME OVER!</h1><p>Score: ${score}</p><button onclick="startGame()">TRY AGAIN</button>`;
+                }
+
+                if (o.x + o.w < 0) {
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreEl.innerText = score;
+                    if (score % 5 === 0) gameSpeed += 0.5;
+                }
+            });
+        }
+        requestAnimationFrame(loop);
+    }
+
+    loop();
 </script>
 </body>
 </html>
