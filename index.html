@@ -3,186 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tung Tung Road Rush 24-Bit</title>
+    <title>Tung Tung Road Rush</title>
     <style>
+        :root {
+            /* This detects the iPad bottom bar height */
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
         body { 
             margin: 0; padding: 0; overflow: hidden; background: #000; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none; -webkit-user-select: none;
+            font-family: 'Courier New', Courier, monospace; touch-action: none; 
+            -webkit-user-select: none;
         }
-        #viewport {
+        #game-container {
             position: relative; width: 100vw; height: 100vh;
-            display: flex; align-items: center; justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         canvas { 
-            border: 8px solid #ffd700; 
-            border-radius: 15px; 
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            background: #4facfe; 
+            border: 6px solid #ffd700; 
+            border-radius: 12px;
+            image-rendering: pixelated;
+            max-width: 95%; max-height: 80%;
         }
-        /* High-Quality iPad Controls */
-        .btn {
-            position: absolute; bottom: 40px; width: 120px; height: 120px;
-            border-radius: 50%; border: 4px solid #fff;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 900; font-size: 20px;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
-            transition: transform 0.1s;
-        }
-        .btn:active { transform: scale(0.9); }
-        #jump { left: 30px; background: linear-gradient(145deg, #8b5e34, #603813); }
-        #attack { right: 30px; background: linear-gradient(145deg, #ff4d4d, #b30000); }
-        
         #hud {
-            position: absolute; top: 30px; width: 90%;
+            position: absolute; top: 20px; width: 90%;
             display: flex; justify-content: space-between;
-            color: #fff; font-size: 24px; font-weight: bold;
-            text-shadow: 2px 2px 4px #000; pointer-events: none;
+            color: white; font-weight: bold; font-size: 1.4rem;
+            text-shadow: 2px 2px 0 #000; z-index: 10;
         }
-        #signature {
-            position: absolute; bottom: 10px; right: 15px;
-            color: rgba(255,255,255,0.6); font-size: 14px; font-style: italic;
+        /* IPAD BUTTON FIX: Anchored safely above the bottom bar */
+        .controls {
+            position: absolute; bottom: calc(var(--safe-bottom) + 40px);
+            width: 100%; display: flex; justify-content: space-between;
+            padding: 0 40px; box-sizing: border-box; pointer-events: none;
         }
+        .btn {
+            width: 120px; height: 120px; border-radius: 30px;
+            border: 4px solid #fff; pointer-events: auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; font-weight: 900; text-shadow: 2px 2px 0 #000;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.4); transition: 0.1s;
+        }
+        .btn:active { transform: scale(0.9) translateY(5px); box-shadow: none; }
+        #jumpBtn { background: linear-gradient(135deg, #8b4513, #5d3210); }
+        #attackBtn { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        
+        #wicki { position: absolute; bottom: 10px; right: 20px; color: #aaa; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<div id="viewport">
+<div id="game-container">
     <div id="hud">
-        <div>SCORE: <span id="score">0</span></div>
+        <div>SCORE: <span id="score">000000</span></div>
         <div>LIVES: <span id="lives">3</span></div>
-        <div><span id="dist">0</span>m</div>
+        <div>DIST: <span id="dist">0</span>m</div>
     </div>
-    
+
     <canvas id="gameCanvas"></canvas>
 
-    <div id="jump" class="btn">JUMP</div>
-    <div id="attack" class="btn">ATTACK</div>
-    <div id="signature">by wicki</div>
+    <div class="controls">
+        <div id="jumpBtn" class="btn"><span>JUMP</span><small>(BARREL)</small></div>
+        <div id="attackBtn" class="btn"><span>ATTACK</span><small>(BAT)</small></div>
+    </div>
+    
+    <div id="wicki">by wicki</div>
 </div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-
-    let w, h, groundY, frame = 0, score = 0, lives = 3, distance = 0, speed = 9;
+    
+    let w, h, groundY, score = 0, lives = 3, distance = 0, frame = 0, speed = 8;
     let obstacles = [];
 
     function setup() {
-        canvas.width = window.innerWidth * 0.95;
-        canvas.height = window.innerHeight * 0.8;
-        w = canvas.width;
-        h = canvas.height;
-        groundY = h - 100;
+        // High resolution sizing
+        canvas.width = 1200; canvas.height = 700;
+        w = canvas.width; h = canvas.height;
+        groundY = h - 120;
     }
-    window.addEventListener('resize', setup);
     setup();
 
     const player = {
-        x: 120, y: 0, dy: 0, isJumping: false, isAttacking: 0,
+        x: 150, y: 0, dy: 0, jumping: false, attacking: 0,
         update() {
-            this.dy += 1.4;
-            this.y += this.dy;
-            if (this.y > groundY - 110) {
-                this.y = groundY - 110;
-                this.dy = 0;
-                this.isJumping = false;
-            }
-            if (this.isAttacking > 0) this.isAttacking--;
-            distance += speed / 18;
+            this.dy += 1.4; this.y += this.dy;
+            if (this.y > groundY - 180) { this.y = groundY - 180; this.dy = 0; this.jumping = false; }
+            if (this.attacking > 0) this.attacking--;
+            distance += speed / 25;
             document.getElementById('dist').innerText = Math.floor(distance);
         },
         draw() {
             ctx.save();
-            // 24-bit Shaded Hog
-            let pigGrad = ctx.createRadialGradient(this.x+30, this.y+70, 10, this.x+40, this.y+80, 60);
-            pigGrad.addColorStop(0, '#ffc2d1'); pigGrad.addColorStop(1, '#fb6f92');
-            ctx.fillStyle = pigGrad;
-            ctx.beginPath(); ctx.ellipse(this.x+45, this.y+85, 55, 35, 0, 0, Math.PI*2); ctx.fill();
-            
-            // Rider (Tung Tung) with shading
-            let woodGrad = ctx.createLinearGradient(this.x+25, this.y, this.x+70, this.y);
-            woodGrad.addColorStop(0, '#7f5539'); woodGrad.addColorStop(0.5, '#b08968'); woodGrad.addColorStop(1, '#ede0d4');
-            ctx.fillStyle = woodGrad;
-            ctx.beginPath(); ctx.roundRect(this.x+25, this.y+10, 45, 85, 10); ctx.fill();
-            
-            // Glowing Eyes
-            ctx.fillStyle = "#fff";
-            ctx.beginPath(); ctx.arc(this.x+38, this.y+35, 8, 0, Math.PI*2); ctx.arc(this.x+58, this.y+35, 8, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#000";
-            ctx.beginPath(); ctx.arc(this.x+40, this.y+35, 3, 0, Math.PI*2); ctx.arc(this.x+60, this.y+35, 3, 0, Math.PI*2); ctx.fill();
+            const px = this.x; const py = this.y;
 
-            // Bat Attack FX
-            if (this.isAttacking > 0) {
-                ctx.fillStyle = "#ffd700";
-                ctx.shadowBlur = 15; ctx.shadowColor = "yellow";
-                ctx.fillRect(this.x+60, this.y+40, 70, 20);
+            // DRAW HOG (The exact pink character from your photo)
+            ctx.fillStyle = '#ffafcc'; ctx.beginPath();
+            ctx.roundRect(px, py + 100, 140, 80, 20); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.fillRect(px + 125, py + 130, 20, 10); // Tusk
+            ctx.fillStyle = '#000'; ctx.fillRect(px + 100, py + 120, 12, 12); // Eye
+
+            // DRAW TUNG TUNG (The log rider)
+            ctx.fillStyle = '#d2b48c'; ctx.fillRect(px + 40, py, 60, 120);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(px + 40, py, 60, 120);
+            
+            // Waving Hand
+            ctx.strokeStyle = '#000'; ctx.beginPath();
+            ctx.moveTo(px + 100, py + 40); ctx.lineTo(px + 130, py + 10); ctx.stroke();
+
+            // Face
+            ctx.fillStyle = '#fff'; ctx.fillRect(px + 50, py + 25, 12, 12); ctx.fillRect(px + 75, py + 25, 12, 12);
+            ctx.fillStyle = '#000'; ctx.fillRect(px + 54, py + 29, 4, 4); ctx.fillRect(px + 79, py + 29, 4, 4);
+            ctx.fillRect(px + 55, py + 60, 30, 8); // Mouth
+
+            // Bat Animation
+            ctx.fillStyle = '#8b4513';
+            if (this.attacking > 0) {
+                ctx.save(); ctx.translate(px + 90, py + 70); ctx.rotate(0.5); ctx.fillRect(0, 0, 80, 20); ctx.restore();
             } else {
-                ctx.fillStyle = "#5d4037";
-                ctx.fillRect(this.x+10, this.y+60, 15, 45);
+                ctx.fillRect(px + 20, py + 80, 20, 70);
             }
             ctx.restore();
         }
     };
 
     function spawn() {
-        if (frame % 85 === 0) {
-            const type = Math.random() > 0.5 ? 'CRATE' : 'BOMB';
-            obstacles.push({ x: w, y: type === 'CRATE' ? groundY - 65 : groundY - 35, type, w: 60, h: 60 });
+        if (frame % 90 === 0) {
+            const type = Math.random() > 0.5 ? 'BOX' : 'BOMB';
+            obstacles.push({ x: w, y: type === 'BOX' ? groundY - 90 : groundY - 60, type, w: 90, h: 90 });
         }
     }
 
-    function renderBackground() {
-        let sky = ctx.createLinearGradient(0, 0, 0, groundY);
-        sky.addColorStop(0, '#4facfe'); sky.addColorStop(1, '#00f2fe');
-        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-
-        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY, w, 100); // Road
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        for (let i = 0; i < 8; i++) {
-            ctx.fillRect((i * 200 - (frame * speed) % 200), groundY + 45, 60, 8);
-        }
+    function drawWorld() {
+        // Sky
+        ctx.fillStyle = '#4facfe'; ctx.fillRect(0, 0, w, groundY);
+        // Grass (Lush)
+        ctx.fillStyle = '#87af3a'; ctx.fillRect(0, groundY - 60, w, 60);
+        // Road
+        ctx.fillStyle = '#333'; ctx.fillRect(0, groundY, w, h - groundY);
+        // Dashed lines
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<10; i++) ctx.fillRect((i*250 - (frame*speed)%250), groundY + 50, 80, 15);
+        
+        // Archer Tower (Background)
+        ctx.fillStyle = '#555'; ctx.fillRect(w - 250, groundY - 250, 100, 200);
+        ctx.fillStyle = '#ff0066'; ctx.fillRect(w - 220, groundY - 290, 40, 40);
     }
 
-    // Touch Support for iPad
-    document.getElementById('jump').addEventListener('touchstart', (e) => {
-        e.preventDefault(); if (!player.isJumping) { player.dy = -26; player.isJumping = true; }
-    });
-    document.getElementById('attack').addEventListener('touchstart', (e) => {
-        e.preventDefault(); player.isAttacking = 12;
-    });
+    // Controls Logic
+    const jump = () => { if (!player.jumping) { player.dy = -28; player.jumping = true; }};
+    const attack = () => { player.attacking = 15; };
 
-    function gameLoop() {
-        ctx.clearRect(0,0,w,h);
-        frame++;
-        renderBackground();
+    document.getElementById('jumpBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); jump(); });
+    document.getElementById('attackBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); attack(); });
+
+    function loop() {
+        frame++; ctx.clearRect(0, 0, w, h);
+        drawWorld();
         player.update();
         player.draw();
         spawn();
 
         obstacles.forEach((o, i) => {
             o.x -= speed;
-            if (o.type === 'CRATE') {
-                ctx.fillStyle = '#3e2723'; ctx.fillRect(o.x, o.y, o.w, o.h);
-                ctx.strokeStyle = '#d7ccc8'; ctx.strokeRect(o.x+4, o.y+4, o.w-8, o.h-8);
+            if (o.type === 'BOX') {
+                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(o.x+8, o.y+8, o.w-16, o.h-16);
             } else {
-                ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(o.x+30, o.y+30, 25, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(o.x+45, o.y+45, 40, 0, Math.PI*2); ctx.fill();
             }
 
-            if (player.x + 80 > o.x && player.x < o.x + o.w && player.y + 110 > o.y) {
-                if (player.isAttacking > 0) {
-                    obstacles.splice(i, 1);
-                    score += 150; document.getElementById('score').innerText = score;
+            if (player.x + 130 > o.x && player.x < o.x + o.w && player.y + 170 > o.y) {
+                if (player.attacking > 0) {
+                    obstacles.splice(i, 1); score += 500;
+                    document.getElementById('score').innerText = score.toString().padStart(6, '0');
                 } else {
                     lives--; document.getElementById('lives').innerText = lives;
                     obstacles.splice(i, 1);
                     if (lives <= 0) location.reload();
                 }
             }
-            if (o.x < -100) obstacles.splice(i, 1);
+            if (o.x < -200) obstacles.splice(i, 1);
         });
-        requestAnimationFrame(gameLoop);
+        requestAnimationFrame(loop);
     }
-    gameLoop();
+    loop();
 </script>
 </body>
 </html>
