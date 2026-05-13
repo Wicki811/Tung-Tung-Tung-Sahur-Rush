@@ -3,36 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Pro</title>
+    <title>Tung Tung Sahur - Pro</title>
     <style>
         body { 
             margin: 0; padding: 0; overflow: hidden; 
-            background: #222; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #00b4d8; font-family: 'Arial Black', sans-serif;
             touch-action: none; -webkit-user-select: none;
         }
         canvas { display: block; }
-        #overlay {
+        #game-ui {
             position: absolute; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; pointer-events: none;
         }
-        .text-glow {
-            color: #fff; text-align: center;
-            text-shadow: 0 0 10px rgba(255,204,0,0.8), 4px 4px 0 #000;
+        .score-box {
+            position: absolute; top: 20px; left: 20px;
+            color: #fff; font-size: 32px; text-shadow: 3px 3px 0 #000;
         }
-        #score-board {
-            position: absolute; top: 30px; left: 30px;
-            color: #ffcc00; font-size: 32px; font-weight: bold;
-            text-shadow: 2px 2px 0 #000;
+        .message-box {
+            background: rgba(0,0,0,0.7); color: gold; padding: 20px 40px;
+            border: 4px solid #fff; border-radius: 20px; text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div id="score-board">SCORE: 0</div>
-    <div id="overlay">
-        <h1 id="main-title" class="text-glow" style="font-size: 60px; margin: 0;">TUNG TUNG RUSH</h1>
-        <p id="sub-title" class="text-glow" style="font-size: 24px;">TAP ANYWHERE TO RIDE</p>
+    <div id="game-ui">
+        <div id="score" class="score-box">SCORE: 0</div>
+        <div id="start-msg" class="message-box">
+            <h1 style="margin:0; font-size: 40px;">TUNG TUNG RUSH</h1>
+            <p style="color: white;">TAP TO START & JUMP</p>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -40,162 +41,173 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const scoreBoard = document.getElementById('score-board');
-    const mainTitle = document.getElementById('main-title');
-    const subTitle = document.getElementById('sub-title');
+    const startMsg = document.getElementById('start-msg');
+    const scoreEl = document.getElementById('score');
 
+    let w, h, groundY;
     function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+        groundY = h - 120;
     }
     window.addEventListener('resize', resize);
     resize();
 
-    let gameState = 'START';
+    let state = 'START';
     let score = 0;
-    let gameSpeed = 8;
-    let obstacles = [];
+    let speed = 8;
     let frame = 0;
+    let obstacles = [];
 
-    // --- DRAWING FUNCTIONS FOR HIGH QUALITY ---
-    function drawTungTung(x, y) {
-        // The Hog
-        ctx.fillStyle = '#ff99ad'; // Pink skin
+    // --- HIGH QUALITY DRAWING FUNCTIONS ---
+
+    function drawHog(x, y) {
+        // Body
+        ctx.fillStyle = '#ff99ad';
         ctx.beginPath();
-        ctx.ellipse(x + 40, y + 60, 45, 30, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 40, y + 65, 45, 30, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
         
-        // Hog Tusks
+        // Tusks
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.moveTo(x + 75, y + 60);
-        ctx.lineTo(x + 95, y + 45);
-        ctx.lineTo(x + 80, y + 70);
+        ctx.moveTo(x + 75, y + 65);
+        ctx.quadraticCurveTo(x + 100, y + 40, x + 85, y + 75);
+        ctx.fill(); ctx.stroke();
+
+        // Eye
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(x + 70, y + 55, 3, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    function drawTungTung(x, y) {
+        // Shadow under the hog
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath(); ctx.ellipse(x + 40, groundY + 95, 40, 10, 0, 0, Math.PI*2); ctx.fill();
+
+        drawHog(x, y);
+
+        // Tung Tung Body (Cylinder)
+        ctx.fillStyle = '#d2b48c'; 
+        ctx.beginPath();
+        ctx.roundRect(x + 20, y + 5, 40, 60, [20, 20, 5, 5]);
+        ctx.fill(); ctx.stroke();
+
+        // Detailed Eyes (High Quality)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(x + 30, y + 25, 8, 0, Math.PI*2);
+        ctx.arc(x + 50, y + 25, 8, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(x + 32, y + 25, 4, 0, Math.PI*2);
+        ctx.arc(x + 52, y + 25, 4, 0, Math.PI*2);
         ctx.fill();
 
-        // The Rider (Tung Tung)
-        ctx.fillStyle = '#d2b48c'; // Tan body
-        ctx.strokeStyle = '#5d4037';
-        ctx.lineWidth = 3;
-        
-        // Cylindrical Body/Head
+        // Mouth shouting "Sahur!"
+        ctx.fillStyle = '#4e0000';
         ctx.beginPath();
-        ctx.roundRect(x + 20, y, 40, 65, [20, 20, 5, 5]);
-        ctx.fill();
-        ctx.stroke();
-
-        // High Quality Face
-        ctx.fillStyle = '#fff'; // Whites of eyes
-        ctx.beginPath();
-        ctx.arc(x + 32, y + 20, 8, 0, Math.PI * 2);
-        ctx.arc(x + 52, y + 20, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000'; // Pupils
-        ctx.beginPath();
-        ctx.arc(x + 34, y + 20, 4, 0, Math.PI * 2);
-        ctx.arc(x + 54, y + 20, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Mouth (Open)
-        ctx.fillStyle = '#440000';
-        ctx.beginPath();
-        ctx.ellipse(x + 42, y + 40, 10, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 40, y + 45, 8, 12, 0, 0, Math.PI*2);
         ctx.fill();
 
         // The Bat
-        ctx.fillStyle = '#8B4513';
         ctx.save();
-        ctx.translate(x + 55, y + 40);
+        ctx.translate(x + 55, y + 45);
         ctx.rotate(-Math.PI / 4);
+        ctx.fillStyle = '#8B4513';
         ctx.fillRect(0, -50, 12, 60);
         ctx.restore();
     }
 
+    function drawArcherTower(x) {
+        ctx.fillStyle = '#7d6e5d';
+        ctx.fillRect(x, h - 250, 60, 150); // Tower body
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x - 5, h - 260, 70, 20); // Top
+    }
+
     const player = {
-        x: 100, y: 0, w: 90, h: 100,
-        dy: 0, jump: -18, gravity: 0.9,
+        x: 100, y: 0, dy: 0, jump: -20, grav: 1.0,
         update() {
-            if (gameState !== 'PLAYING') return;
-            this.dy += this.gravity;
+            if (state !== 'PLAY') return;
+            this.dy += this.grav;
             this.y += this.dy;
-            let ground = canvas.height - 180;
-            if (this.y > ground) {
-                this.y = ground;
+            if (this.y > groundY - 80) {
+                this.y = groundY - 80;
                 this.dy = 0;
             }
         }
     };
 
-    function handleAction() {
-        if (gameState === 'START' || gameState === 'OVER') {
-            gameState = 'PLAYING';
-            score = 0;
-            obstacles = [];
-            gameSpeed = 8;
-            player.y = canvas.height - 300;
-            mainTitle.style.display = 'none';
-            subTitle.style.display = 'none';
-        } else if (gameState === 'PLAYING' && player.dy === 0) {
-            player.dy = player.jump;
-        }
+    function start() {
+        score = 0; speed = 9; obstacles = []; 
+        player.y = groundY - 80;
+        state = 'PLAY';
+        startMsg.style.display = 'none';
+        scoreEl.innerText = "SCORE: 0";
     }
 
-    window.addEventListener('touchstart', (e) => { e.preventDefault(); handleAction(); }, { passive: false });
-    window.addEventListener('mousedown', handleAction);
+    function tap() {
+        if (state === 'START' || state === 'OVER') start();
+        else if (player.dy === 0) player.dy = player.jump;
+    }
+
+    window.addEventListener('touchstart', (e) => { e.preventDefault(); tap(); }, {passive: false});
+    window.addEventListener('mousedown', tap);
 
     function loop() {
         frame++;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // High Quality Background
-        let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        grad.addColorStop(0, '#00b4d8');
-        grad.addColorStop(1, '#90e0ef');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
 
-        // Ground (Road)
-        ctx.fillStyle = '#555';
-        ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-        ctx.fillStyle = '#777';
-        ctx.fillRect(0, canvas.height - 110, canvas.width, 10);
+        // Sky & Environment
+        let sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#00b4d8'); sky.addColorStop(1, '#90e0ef');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
 
-        if (gameState === 'PLAYING') {
+        // Clouds in distance
+        ctx.fillStyle = 'white';
+        for(let i=0; i<3; i++) {
+            ctx.beginPath(); ctx.arc(200 + (i*400) - (frame*0.5 % 1500), 100, 50, 0, Math.PI*2); ctx.fill();
+        }
+
+        // Road
+        ctx.fillStyle = '#555'; ctx.fillRect(0, groundY + 10, w, 200);
+        ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, groundY + 10, w, 15); // Grass edge
+
+        if (state === 'PLAY') {
             player.update();
             
-            // Spawn Obstacles (Crates/Cannons)
-            if (frame % 80 === 0) {
-                obstacles.push({ x: canvas.width, y: canvas.height - 160, w: 60, h: 60 });
+            // Spawn Crate obstacles
+            if (frame % 70 === 0) {
+                obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
             }
 
             obstacles.forEach((o, i) => {
-                o.x -= gameSpeed;
-                // Draw Crate
-                ctx.fillStyle = '#5d4037';
-                ctx.fillRect(o.x, o.y, o.w, o.h);
-                ctx.strokeStyle = '#333';
-                ctx.strokeRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
+                o.x -= speed;
+                // Draw Crate (Brown with X)
+                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.strokeStyle = '#fff'; ctx.strokeRect(o.x+5, o.y+5, o.w-10, o.h-10);
 
-                // Better Collision Detection
-                if (player.x + 10 < o.x + o.w && player.x + 80 > o.x &&
-                    player.y + 20 < o.y + o.h && player.y + 100 > o.y) {
-                    gameState = 'OVER';
-                    mainTitle.innerText = "CRASHED!";
-                    mainTitle.style.display = 'block';
-                    subTitle.innerText = "TAP TO RESTART";
-                    subTitle.style.display = 'block';
+                // Collision
+                if (player.x + 80 > o.x && player.x < o.x + o.w && player.y + 80 > o.y) {
+                    state = 'OVER';
+                    startMsg.style.display = 'block';
+                    startMsg.innerHTML = `<h1>CRASHED!</h1><p>Score: ${score}</p><p>TAP TO RETRY</p>`;
                 }
 
-                if (o.x + o.w < 0) {
+                if (o.x < -100) {
                     obstacles.splice(i, 1);
                     score++;
-                    gameSpeed += 0.1;
-                    scoreBoard.innerText = "SCORE: " + score;
+                    speed += 0.1;
+                    scoreEl.innerText = "SCORE: " + score;
                 }
             });
         }
-        
+
         drawTungTung(player.x, player.y);
         requestAnimationFrame(loop);
     }
