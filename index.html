@@ -3,42 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung iPad Edition</title>
+    <title>Tung Tung iPad Fixed</title>
     <style>
         body { 
             margin: 0; padding: 0; overflow: hidden; 
-            background: #1a1a1a; font-family: 'Arial Black', sans-serif;
-            touch-action: none; /* Prevents zooming/scrolling while playing */
+            background: #87CEEB; font-family: 'Arial Black', sans-serif;
+            touch-action: none; -webkit-user-select: none;
         }
-        canvas { display: block; background: #87CEEB; }
-        #ui {
-            position: absolute; top: 20px; left: 20px;
-            color: white; font-size: 30px; text-shadow: 3px 3px 0 #000;
+        canvas { display: block; }
+        #ui-text {
+            position: absolute; width: 100%; text-align: center;
+            top: 50%; transform: translateY(-50%);
+            color: white; text-shadow: 4px 4px 0 #000;
             pointer-events: none;
         }
-        .menu {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center; color: white;
-            background: rgba(0,0,0,0.8); padding: 30px;
-            border-radius: 20px; border: 5px solid #ffcc00;
-            width: 80%; max-width: 400px;
-        }
-        button {
-            padding: 15px 30px; font-size: 20px; font-weight: bold;
-            background: #ffcc00; border: none; border-radius: 10px;
-            cursor: pointer; margin-top: 20px;
+        #score-board {
+            position: absolute; top: 20px; left: 20px;
+            color: white; font-size: 30px; text-shadow: 2px 2px 0 #000;
         }
     </style>
 </head>
 <body>
 
-    <div id="ui">SCORE: <span id="score">0</span></div>
-
-    <div id="start-menu" class="menu">
-        <h1>TUNG TUNG RUSH</h1>
-        <p>TAP SCREEN TO JUMP</p>
-        <button onclick="startGame()">START GAME</button>
+    <div id="score-board">SCORE: 0</div>
+    <div id="ui-text">
+        <h1 id="main-title">TUNG TUNG RUSH</h1>
+        <p id="sub-title">TAP ANYWHERE TO START</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -46,10 +36,10 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const startMenu = document.getElementById('start-menu');
+    const scoreBoard = document.getElementById('score-board');
+    const mainTitle = document.getElementById('main-title');
+    const subTitle = document.getElementById('sub-title');
 
-    // Resize canvas for iPad
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -59,122 +49,98 @@
 
     let gameState = 'START';
     let score = 0;
-    let gameSpeed = 6;
-    let frames = 0;
+    let gameSpeed = 7;
+    let obstacles = [];
+    let frameCount = 0;
 
     const player = {
-        x: 100, y: 0, w: 70, h: 90,
-        dy: 0, jump: -15, gravity: 0.8, grounded: false,
+        x: 80, y: 0, w: 60, h: 80,
+        dy: 0, jump: -16, gravity: 0.8,
         draw() {
-            // Draw Tung Tung (Brown Cylinder)
-            ctx.fillStyle = '#d2b48c';
-            ctx.fillRect(this.x + 15, this.y, 40, 50);
-            
-            // Draw Hog (Pink Body)
-            ctx.fillStyle = '#ffc0cb';
-            ctx.fillRect(this.x, this.y + 45, 70, 45);
-            
-            // Draw Bat
-            ctx.fillStyle = '#8B4513';
-            ctx.save();
-            ctx.translate(this.x + 60, this.y + 20);
-            ctx.rotate(Math.PI / 4);
-            ctx.fillRect(0, 0, 10, 50);
-            ctx.restore();
-        },
-        update() {
-            if (gameState !== 'PLAYING') return;
-            this.dy += this.gravity;
-            this.y += this.dy;
-
-            const groundY = canvas.height - 140;
-            if (this.y > groundY) {
-                this.y = groundY;
-                this.dy = 0;
-                this.grounded = true;
-            }
+            ctx.fillStyle = '#d2b48c'; // Tung Tung
+            ctx.fillRect(this.x + 10, this.y, 40, 50);
+            ctx.fillStyle = '#ffc0cb'; // Hog
+            ctx.fillRect(this.x, this.y + 40, 70, 40);
         }
     };
 
-    let obstacles = [];
-    function spawnObstacle() {
-        const h = 60;
-        obstacles.push({
-            x: canvas.width,
-            y: canvas.height - 110 - h,
-            w: 50, h: h,
-            color: Math.random() > 0.5 ? '#333' : '#5C4033'
-        });
-    }
-
-    function startGame() {
-        score = 0;
-        obstacles = [];
-        gameSpeed = 7;
-        gameState = 'PLAYING';
-        startMenu.style.display = 'none';
-        player.y = canvas.height - 300;
-    }
-
-    function jump() {
-        if (gameState === 'PLAYING' && player.grounded) {
-            player.dy = player.jump;
-            player.grounded = false;
-        } else if (gameState === 'OVER') {
-            startGame();
+    function spawn() {
+        if (Math.random() < 0.02) {
+            obstacles.push({ x: canvas.width, y: canvas.height - 150, w: 50, h: 50 });
         }
     }
 
-    // Touch Support for iPad
+    function handleAction() {
+        if (gameState === 'START' || gameState === 'OVER') {
+            // Start the game
+            gameState = 'PLAYING';
+            score = 0;
+            obstacles = [];
+            gameSpeed = 7;
+            player.y = canvas.height - 180;
+            mainTitle.style.display = 'none';
+            subTitle.style.display = 'none';
+        } else if (gameState === 'PLAYING' && player.y >= canvas.height - 181) {
+            // Jump
+            player.dy = player.jump;
+        }
+    }
+
+    // Single trigger for all iPad/iPhone touch interactions
     window.addEventListener('touchstart', (e) => {
-        e.preventDefault(); // Prevents flickering
-        jump();
+        e.preventDefault();
+        handleAction();
     }, { passive: false });
 
-    // Keyboard Support
-    window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') jump();
-    });
+    // Keyboard support for testing
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleAction(); });
 
     function loop() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw Sky/Grass
-        ctx.fillStyle = '#4CAF50'; // Grass
+        
+        // Ground
+        ctx.fillStyle = '#4CAF50';
         ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
 
-        player.update();
-        player.draw();
-
         if (gameState === 'PLAYING') {
-            frames++;
-            if (frames % 90 === 0) spawnObstacle();
-            
+            // Physics
+            player.dy += player.gravity;
+            player.y += player.dy;
+            if (player.y > canvas.height - 180) {
+                player.y = canvas.height - 180;
+                player.dy = 0;
+            }
+
+            spawn();
             obstacles.forEach((o, i) => {
                 o.x -= gameSpeed;
-                ctx.fillStyle = o.color;
+                ctx.fillStyle = '#333';
                 ctx.fillRect(o.x, o.y, o.w, o.h);
 
                 // Collision
-                if (player.x < o.x + o.w && player.x + player.w > o.x &&
-                    player.y < o.y + o.h && player.y + player.h > o.y) {
-                    gameState = 'START';
-                    startMenu.style.display = 'block';
-                    startMenu.innerHTML = `<h1>GAME OVER!</h1><p>Score: ${score}</p><button onclick="startGame()">TRY AGAIN</button>`;
+                if (player.x < o.x + o.w && player.x + 60 > o.x &&
+                    player.y < o.y + o.h && player.y + 80 > o.y) {
+                    gameState = 'OVER';
+                    mainTitle.innerText = "GAME OVER";
+                    mainTitle.style.display = 'block';
+                    subTitle.innerText = "TAP TO TRY AGAIN";
+                    subTitle.style.display = 'block';
                 }
 
                 if (o.x + o.w < 0) {
                     obstacles.splice(i, 1);
                     score++;
-                    scoreEl.innerText = score;
-                    if (score % 5 === 0) gameSpeed += 0.5;
+                    scoreBoard.innerText = "SCORE: " + score;
+                    gameSpeed += 0.1;
                 }
             });
         }
+        
+        player.draw();
         requestAnimationFrame(loop);
     }
-
     loop();
 </script>
 </body>
 </html>
+
