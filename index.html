@@ -3,244 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Retro War</title>
+    <title>Tung Tung Sahur Pro</title>
     <style>
-        body { 
-            margin: 0; padding: 0; overflow: hidden; 
-            background: #2a3d0a; touch-action: none; 
-            -webkit-user-select: none;
-            /* Retro Font (Using monospace) */
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
+        body { margin: 0; padding: 0; overflow: hidden; background: #1a2a0a; touch-action: none; -webkit-user-select: none; font-family: sans-serif; }
+        canvas { display: block; image-rendering: auto; }
+        #instruction {
+            position: absolute; bottom: 20px; width: 100%; text-align: center;
+            color: white; font-weight: bold; text-shadow: 2px 2px 0 #000; pointer-events: none;
         }
-        canvas { 
-            display: block; 
-            /* Classic retro look: Pixel Perfect Scaling */
-            image-rendering: pixelated;
-        }
-        #ui { 
-            position: absolute; top: 0; left: 0; width: 100%; padding: 15px; 
-            pointer-events: none;
-        }
-        .hp-bar-bg { 
-            width: 150px; height: 15px; background: #333; 
-            border: 4px solid #fff; /* Crisp borders */
-            display: flex; align-items: center; justify-content: flex-start;
-        }
-        #hp-fill { 
-            width: 100%; height: 100%; background: #ff0000; 
-            transition: width 0.1s; /* Faster update for retro feel */
-        }
-        #score { color: gold; font-size: 28px; text-shadow: 2px 2px 0 #000; margin-top: 5px; }
-        #menu { 
-            position: absolute; inset: 0; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            background: rgba(0,0,0,0.8); color: white; text-align: center;
-        }
-        .card { 
-            background: #5d4037; padding: 30px; 
-            border: 6px solid #fff; 
-            box-shadow: 6px 6px 0 #000;
-        }
-        button { 
-            padding: 10px 25px; font-size: 20px; 
-            background: #ffcc00; border: 4px solid #000; color: #000;
-            font-weight: bold; cursor: pointer; transform: translateY(0); transition: 0.05s; 
-            font-family: 'Courier New', Courier, monospace;
-        }
-        button:active { transform: translateY(3px); }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div class="hp-bar-bg"><div id="hp-fill"></div></div>
-    <div id="score" class="score">0</div>
-</div>
-
-<div id="menu">
-    <div class="card">
-        <h1 style="font-size: 40px; margin: 0; text-transform: uppercase;">Retro War</h1>
-        <p style="font-size: 16px;">TAP JUMP | TAP AIR TO SPIN</p>
-        <button onclick="startGame()">START SHOW</button>
-    </div>
-</div>
-
-<canvas id="gameCanvas"></canvas>
+    <div id="instruction">TAP ANYWHERE TO JUMP / DOUBLE TAP TO SPIN</div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const hpFill = document.getElementById('hp-fill');
-    const scoreEl = document.getElementById('score');
-    const menu = document.getElementById('menu');
 
-    let w, h, groundY, state = 'MENU', score = 0, hp = 100, speed = 9, frame = 0;
-    let obstacles = [], arrows = [], particles = [], shake = 0;
-
-    // Fixed colors for retro style
-    const HOG_P = "#ff4d6d"; // Hot Pink (Body)
-    const HOG_S = "#330000"; // Dark border/shadow
-    const TUNG_P = "#d2b48c"; // Tan (Skin)
-    const TUNG_S = "#7f5539"; // Brown (Bat)
-    const ARCHER_T = "#0000ff"; // Blue (Archer Tunic)
+    let w, h, groundY;
+    let state = 'MENU'; // States: MENU, PLAYING, GAMEOVER
+    let score = 0;
+    let hp = 100;
+    let speed = 10;
+    let frame = 0;
+    let obstacles = [];
+    let arrows = [];
 
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        // Adjust for Retro Scaling (Low Resolution emulation)
-        if(w < 600) { canvas.width /= 2; canvas.height /= 2; }
-        groundY = h - 160;
+        groundY = h - 150;
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // --- PIXELATED CHARACTER DRAWING ---
-    function drawRetroCharacter(x, y, spin) {
+    // --- CHARACTER DRAWING (SAME AS IMAGE) ---
+    function drawTungTung(x, y, isSpinning) {
         ctx.save();
-        if(shake > 0) { ctx.translate(Math.random()*shake-shake/2, Math.random()*shake-shake/2); shake *= 0.9; }
-        if(spin > 0) ctx.rotate(spin * 0.4); // Spin animation
+        if (isSpinning) {
+            ctx.translate(x + 40, y + 50);
+            ctx.rotate(frame * 0.4);
+            ctx.translate(-(x + 40), -(y + 50));
+        }
 
-        // THE HOG (Simple Blocks)
-        ctx.fillStyle = HOG_P;
-        ctx.fillRect(x, y + 50, 80, 50); // Body (Blocky)
-        ctx.fillStyle = HOG_S;
-        ctx.fillRect(x+10, y+90, 15, 20); // Front leg
-        ctx.fillRect(x+55, y+90, 15, 20); // Back leg
-        ctx.fillStyle = HOG_S; // "Shadow" block
-        ctx.fillRect(x+30, y+50, 10, 40);
+        // The Hog
+        let hG = ctx.createRadialGradient(x+30, y+50, 5, x+40, y+65, 50);
+        hG.addColorStop(0, '#ff99ac'); hG.addColorStop(1, '#e63946');
+        ctx.fillStyle = hG;
+        ctx.beginPath(); ctx.ellipse(x+40, y+70, 55, 38, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
 
-        // Tusks (Blocky Triangle)
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.moveTo(x + 70, y + 60); ctx.lineTo(x + 95, y + 50); ctx.lineTo(x + 75, y + 80);
-        ctx.fill();
+        // Tusks
+        ctx.fillStyle = '#fff'; ctx.beginPath();
+        ctx.moveTo(x+85, y+70); ctx.bezierCurveTo(x+115, y+40, x+120, y+50, x+95, y+85); ctx.fill(); ctx.stroke();
 
-        // TUNG TUNG CYLINDER (Simple Tan Rectangle)
-        ctx.fillStyle = TUNG_P;
-        ctx.fillRect(x+15, y, 50, 70); // Head/Body
+        // The Rider (Cylinder)
+        let wG = ctx.createLinearGradient(x+20, y, x+65, y);
+        wG.addColorStop(0, '#8b5e34'); wG.addColorStop(0.5, '#d2b48c'); wG.addColorStop(1, '#fff4e0');
+        ctx.fillStyle = wG;
+        ctx.beginPath(); ctx.roundRect(x+20, y-5, 45, 80, [25, 25, 5, 5]); ctx.fill(); ctx.stroke();
 
-        // Retro Eyes (Big White Squares, One Pixel Center)
-        ctx.fillStyle = "white";
-        ctx.fillRect(x+25, y+10, 10, 10);
-        ctx.fillRect(x+45, y+10, 10, 10);
-        ctx.fillStyle = "black";
-        ctx.fillRect(x+29, y+14, 2, 2);
-        ctx.fillRect(x+49, y+14, 2, 2);
+        // Staring Eyes
+        ctx.fillStyle = '#fff'; ctx.beginPath();
+        ctx.arc(x+32, y+22, 11, 0, Math.PI*2); ctx.arc(x+56, y+22, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#000'; ctx.beginPath();
+        ctx.arc(x+34, y+22, 4, 0, Math.PI*2); ctx.arc(x+58, y+22, 4, 0, Math.PI*2); ctx.fill();
 
-        // Mouth (Open Dark Rectangle)
-        ctx.fillStyle = "#3d0000";
-        ctx.fillRect(x+30, y+35, 20, 15);
-
-        // Bat (Brown Box)
-        ctx.fillStyle = TUNG_S;
-        ctx.fillRect(x+60, y+30, 10, 60);
+        // The Bat
+        ctx.save(); ctx.translate(x+65, y+55); ctx.rotate(-Math.PI/4);
+        ctx.fillStyle = '#5d4037'; ctx.fillRect(0, -60, 15, 75); ctx.strokeRect(0, -60, 15, 75);
+        ctx.restore();
 
         ctx.restore();
     }
 
-    // --- THE VISIBLE PIXEL ARCHERS ---
-    function drawArcherLayer() {
-        // Draw 3 static pixel-art archers on the far right
-        ctx.fillStyle = ARCHER_T;
-        const archerX = w - 80;
-        const archerY = groundY - 50;
-
-        for(let i=0; i<3; i++) {
-            let curY = archerY - (i * 60);
-            ctx.fillRect(archerX, curY, 20, 30); // Body
-            ctx.fillStyle = "#ffcc00"; // Yellow pixel skin
-            ctx.fillRect(archerX + 5, curY - 10, 10, 10); // Head
-            ctx.fillStyle = "white"; // Bow
-            ctx.fillRect(archerX - 10, curY + 5, 2, 20); // Bow line
-            ctx.fillStyle = ARCHER_T; // Reset color for next tunic
-        }
-    }
-
-    const player = { x: 140, y: 0, dy: 0, jumps: 0, spin: 0, 
+    const player = {
+        x: 100, y: 0, dy: 0, jumps: 0, spinTime: 0,
         update() {
-            if(state !== 'PLAY') return;
-            this.dy += 1.3; this.y += this.dy; // Retro floaty gravity
-            if(this.y > groundY - 100) { this.y = groundY - 100; this.dy = 0; this.jumps = 0; }
-            if(this.spin > 0) this.spin--;
+            if (state !== 'PLAYING') return;
+            this.dy += 1.4;
+            this.y += this.dy;
+            if (this.y > groundY - 100) {
+                this.y = groundY - 100;
+                this.dy = 0;
+                this.jumps = 0;
+            }
+            if (this.spinTime > 0) this.spinTime--;
         }
     };
 
-    function startGame() {
-        state = 'PLAY'; score = 0; hp = 100; speed = 9; obstacles = []; arrows = []; menu.style.display = 'none';
-        hpFill.style.width = '100%';
+    // --- GAME CONTROL ---
+    function handleAction(e) {
+        if (e) e.preventDefault();
+        
+        if (state === 'MENU' || state === 'GAMEOVER') {
+            // Reset and Start
+            state = 'PLAYING';
+            score = 0;
+            hp = 100;
+            speed = 10;
+            obstacles = [];
+            arrows = [];
+            player.y = groundY - 100;
+        } else if (state === 'PLAYING') {
+            if (player.jumps < 2) {
+                player.dy = -22;
+                player.jumps++;
+                if (player.jumps === 2) player.spinTime = 20;
+            }
+        }
     }
 
-    window.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        if(state === 'PLAY') {
-            if(player.jumps < 2) { player.dy = -22; player.jumps++; if(player.jumps === 2) player.spin = 10; }
-        }
-    }, {passive: false});
+    // Universal listeners for iPad
+    window.addEventListener('touchstart', handleAction, { passive: false });
+    window.addEventListener('mousedown', handleAction);
 
     function loop() {
         frame++;
         ctx.clearRect(0, 0, w, h);
 
-        // Retro Background Layers
-        // Flat blue sky
-        ctx.fillStyle = '#00ffff'; ctx.fillRect(0, 0, w, h);
-        
-        // Blocky Grass
+        // Sky
+        let sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#4facfe'); sky.addColorStop(1, '#00f2fe');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+
+        // Ground
         ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, groundY + 10, w, h);
-        // Flat grey road
-        ctx.fillStyle = '#555'; ctx.fillRect(0, groundY + 25, w, 110);
+        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY + 30, w, 120);
 
-        // ARCHER LAYER (Static on right)
-        drawArcherLayer();
-
-        if(state === 'PLAY') {
-            player.update();
-
-            // Spawn obstacles
-            if(frame % 50 === 0) obstacles.push({x: w, y: groundY - 30, w: 60, h: 60});
-            // Arrows originate from the stationary archers (Difficult)
-            if(frame % 90 === 0) arrows.push({x: w-100, y: groundY - 150, w: 40, h: 5});
-
-            // Boxes
-            obstacles.forEach((o, i) => {
-                o.x -= speed;
-                ctx.fillStyle = TUNG_S; ctx.fillRect(o.x, o.y, o.w, o.h); // Crate
-                ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(o.x, o.y, o.w, o.h);
-
-                if(player.x + 80 > o.x && player.x < o.x + o.w && player.y + 100 > o.y) {
-                    hp -= 20; shake = 15; obstacles.splice(i, 1);
-                }
-                if(o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.15; }
-            });
-
-            // Arrows (Simple pixel lines)
-            arrows.forEach((a, i) => {
-                a.x -= speed + 5;
-                ctx.fillStyle = 'white'; ctx.fillRect(a.x, a.y, a.w, a.h); // Arrow line
-
-                if(player.x + 80 > a.x && player.x < a.x + a.w && player.y + 100 > a.y && player.y < a.y + 40) {
-                    if(player.spin > 0) { // Retro Deflect mechanic retained
-                        arrows.splice(i, 1); score += 10;
-                    } else {
-                        hp -= 30; shake = 25; arrows.splice(i, 1);
-                    }
-                }
-                if(a.x < -100) arrows.splice(i, 1);
-            });
-
-            hpFill.style.width = hp + '%';
-            scoreEl.innerText = score;
-
-            if(hp <= 0) {
-                state = 'MENU'; menu.style.display = 'flex';
-                menu.innerHTML = `<div class="card"><h1>GAME OVER</h1><p>SCORE: ${score}</p><button onclick="location.reload()">RETRY?</button></div>`;
-            }
+        if (state === 'MENU') {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 50px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('TUNG TUNG SAHUR', w/2, h/2 - 20);
+            ctx.font = '25px sans-serif';
+            ctx.fillText('TAP ANYWHERE TO START', w/2, h/2 + 40);
         }
 
-        drawRetroCharacter(player.x, player.y, player.spin);
+        if (state === 'PLAYING') {
+            player.update();
+
+            // Spawn Archers (Visual only background)
+            ctx.fillStyle = '#333';
+            ctx.fillRect(w - 60, groundY - 100, 40, 100); // Archer Tower
+
+            // Spawn Obstacles (Boxes)
+            if (frame % 70 === 0) obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
+            
+            // Spawn Arrows (From the archer)
+            if (frame % 100 === 0) arrows.push({ x: w - 60, y: groundY - 120, w: 40, h: 6 });
+
+            // Handle Boxes
+            obstacles.forEach((o, i) => {
+                o.x -= speed;
+                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                if (player.x + 70 > o.x && player.x < o.x + o.w && player.y + 100 > o.y) {
+                    if (player.spinTime > 0) { obstacles.splice(i, 1); score += 5; } 
+                    else { hp -= 20; obstacles.splice(i, 1); }
+                }
+                if (o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.1; }
+            });
+
+            // Handle Arrows
+            arrows.forEach((a, i) => {
+                a.x -= (speed + 6);
+                ctx.fillStyle = '#fff'; ctx.fillRect(a.x, a.y, a.w, a.h);
+                if (player.x + 70 > a.x && player.x < a.x + a.w && player.y + 100 > a.y && player.y < a.y + 40) {
+                    if (player.spinTime > 0) { arrows.splice(i, 1); score += 10; }
+                    else { hp -= 25; arrows.splice(i, 1); }
+                }
+                if (a.x < -100) arrows.splice(i, 1);
+            });
+
+            // HUD
+            ctx.fillStyle = '#000'; ctx.fillRect(20, 20, 200, 20);
+            ctx.fillStyle = '#ff0000'; ctx.fillRect(20, 20, hp * 2, 20);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText('SCORE: ' + score, 20, 80);
+
+            if (hp <= 0) state = 'GAMEOVER';
+        }
+
+        if (state === 'GAMEOVER') {
+            ctx.fillStyle = 'rgba(255,0,0,0.4)';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+            ctx.font = 'bold 60px sans-serif';
+            ctx.fillText('WASTED', w/2, h/2);
+            ctx.font = '25px sans-serif';
+            ctx.fillText('TAP TO RETRY', w/2, h/2 + 60);
+        }
+
+        drawTungTung(player.x, player.y, player.spinTime > 0);
         requestAnimationFrame(loop);
     }
+
     loop();
 </script>
 </body>
