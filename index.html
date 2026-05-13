@@ -2,179 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Sahur Fix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tung Tung Hardcore</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #2d5a27; touch-action: none; -webkit-user-select: none; }
-        canvas { display: block; }
-        #overlay {
-            position: absolute; top: 20px; width: 100%; text-align: center;
-            color: white; font-family: 'Arial Black', sans-serif; pointer-events: none;
-            text-shadow: 3px 3px 0 #000;
+        :root { --safe-bottom: env(safe-area-inset-bottom, 30px); }
+        body { margin: 0; padding: 0; overflow: hidden; background: #000; touch-action: none; -webkit-user-select: none; font-family: 'Arial Black', sans-serif; }
+        
+        /* HUD & SCREENS */
+        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+        #hud { width: 90%; margin: 30px auto; color: white; font-size: 1.2rem; display: flex; justify-content: space-between; text-shadow: 2px 2px 0 #000; }
+        
+        #game-over { 
+            position: absolute; inset: 0; background: rgba(0,0,0,0.85); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            color: white; text-align: center; z-index: 100; pointer-events: auto;
         }
+
+        /* iPAD BUTTONS: Pushed high and glowing */
+        .btn {
+            position: absolute; bottom: calc(var(--safe-bottom) + 140px); 
+            width: 110px; height: 110px; border-radius: 25px; border: 4px solid #fff;
+            pointer-events: auto; display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: 900; font-size: 1.1rem;
+            box-shadow: 0 0 15px rgba(255,255,255,0.5); transition: 0.1s;
+        }
+        #jumpBtn { left: 40px; background: #8b4513; }
+        #attackBtn { right: 40px; background: #c0392b; }
+        .btn:active { transform: scale(0.9); box-shadow: 0 0 5px #fff; }
+        
+        canvas { display: block; image-rendering: pixelated; background: #4facfe; }
+        #wicki { position: absolute; top: 10px; right: 20px; color: #fff; opacity: 0.5; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <div id="overlay">
-        <h1 id="main-text">TAP TO START THE SHOW</h1>
-        <h2 id="sub-text">SCORE: 0 | HP: 100</h2>
+<div id="ui-layer">
+    <div id="wicki">by wicki</div>
+    <div id="hud">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>HP: <span id="hp">100</span></div>
+    </div>
+    
+    <div id="game-over">
+        <h1 style="color:#ff0066; font-size: 3rem;">GAME OVER</h1>
+        <p style="font-size: 1.5rem;">FINAL SCORE: <span id="final-score">0</span></p>
+        <p style="color:#ffd700;">HIGH SCORE: <span id="high-score">0</span></p>
+        <button onclick="location.reload()" style="margin-top:20px; padding:15px 40px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:none; background:#fff;">RETRY</button>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <div id="jumpBtn" class="btn">JUMP</div>
+    <div id="attackBtn" class="btn">ATTACK</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const mainText = document.getElementById('main-text');
-    const subText = document.getElementById('sub-text');
-
-    let w, h, groundY;
-    let state = 'MENU'; // MENU, PLAY, OVER
-    let frame = 0, score = 0, hp = 100, speed = 10;
-    let obstacles = [], arrows = [];
+    
+    let w, h, groundY, frame = 0, score = 0, hp = 100, speed = 8, active = true;
+    let highScore = localStorage.getItem('tungHigh') || 0;
+    let entities = [];
 
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h - 150;
+        groundY = h * 0.75;
     }
     window.addEventListener('resize', resize);
     resize();
 
     const player = {
-        x: 100, y: 0, dy: 0, jumps: 0, spin: 0,
+        x: 100, y: 0, dy: 0, jumping: false, attacking: 0,
         update() {
-            if (state === 'MENU') {
-                this.y = groundY - 100; // Just sit there on menu
-                return;
-            }
-            this.dy += 1.4;
-            this.y += this.dy;
-            if (this.y > groundY - 100) {
-                this.y = groundY - 100;
-                this.dy = 0;
-                this.jumps = 0;
-            }
-            if (this.spin > 0) this.spin--;
+            this.dy += 1.5; this.y += this.dy;
+            if (this.y > groundY - 140) { this.y = groundY - 140; this.dy = 0; this.jumping = false; }
+            if (this.attacking > 0) this.attacking--;
+            speed += 0.002; // Speed ramp
+        },
+        draw() {
+            ctx.save();
+            const px = this.x, py = this.y;
+            // Hog
+            ctx.fillStyle = '#ffafcc'; ctx.fillRect(px, py + 80, 110, 60);
+            ctx.fillStyle = '#000'; ctx.fillRect(px + 90, py + 95, 10, 10);
+            // Tung Tung
+            ctx.fillStyle = '#d2b48c'; ctx.fillRect(px + 30, py + 10, 50, 90);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(px + 30, py + 10, 50, 90);
+            // Weapon
+            ctx.fillStyle = '#8b4513';
+            if (this.attacking > 0) ctx.fillRect(px + 80, py + 40, 80, 20);
+            else ctx.fillRect(px + 20, py + 60, 15, 60);
+            ctx.restore();
         }
     };
 
-    // --- CHARACTER DRAWING (Image Match) ---
-    function drawRider(x, y) {
-        ctx.save();
-        if (player.spin > 0) {
-            ctx.translate(x + 40, y + 50);
-            ctx.rotate(frame * 0.5);
-            ctx.translate(-(x + 40), -(y + 50));
+    function spawn() {
+        if (frame % Math.max(30, 80 - Math.floor(speed)) === 0) {
+            const type = Math.random() > 0.6 ? 'BAT' : (Math.random() > 0.5 ? 'CRATE' : 'BOMB');
+            entities.push({ x: w, y: type === 'BAT' ? groundY - 200 : (type === 'BOMB' ? groundY - 40 : groundY - 80), type, w: 60, h: 60 });
         }
-
-        // Hog
-        let hG = ctx.createRadialGradient(x+30, y+50, 5, x+40, y+65, 50);
-        hG.addColorStop(0, '#ff99ac'); hG.addColorStop(1, '#e63946');
-        ctx.fillStyle = hG;
-        ctx.beginPath(); ctx.ellipse(x+40, y+70, 55, 38, 0, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
-
-        // Tusks
-        ctx.fillStyle = '#fff'; ctx.beginPath();
-        ctx.moveTo(x+85, y+70); ctx.bezierCurveTo(x+115, y+40, x+120, y+50, x+95, y+85); ctx.fill(); ctx.stroke();
-
-        // Rider (Tung Tung)
-        let wG = ctx.createLinearGradient(x+20, y, x+65, y);
-        wG.addColorStop(0, '#8b5e34'); wG.addColorStop(0.5, '#d2b48c'); wG.addColorStop(1, '#fff4e0');
-        ctx.fillStyle = wG;
-        ctx.beginPath(); ctx.roundRect(x+20, y-5, 45, 80, [25, 25, 5, 5]); ctx.fill(); ctx.stroke();
-
-        // Staring Eyes
-        ctx.fillStyle = '#fff'; ctx.beginPath();
-        ctx.arc(x+32, y+22, 11, 0, Math.PI*2); ctx.arc(x+56, y+22, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#000'; ctx.beginPath();
-        ctx.arc(x+34, y+22, 4, 0, Math.PI*2); ctx.arc(x+58, y+22, 4, 0, Math.PI*2); ctx.fill();
-
-        // Shouting Mouth
-        ctx.fillStyle = '#3d0000'; ctx.beginPath();
-        ctx.ellipse(x+44, y+48, 10, 15, 0, 0, Math.PI*2); ctx.fill();
-
-        ctx.restore();
     }
-
-    // --- THE FIX: POINTERDOWN ---
-    // Pointerdown works for BOTH touch and mouse on iPad
-    window.addEventListener('pointerdown', (e) => {
-        if (state === 'MENU' || state === 'OVER') {
-            state = 'PLAY';
-            score = 0; hp = 100; speed = 10;
-            obstacles = []; arrows = [];
-            mainText.innerText = "SAHUR WAR!";
-        } else {
-            if (player.jumps < 2) {
-                player.dy = -22;
-                player.jumps++;
-                if (player.jumps === 2) player.spin = 20;
-            }
-        }
-    });
 
     function loop() {
-        frame++;
-        ctx.clearRect(0, 0, w, h);
+        if (!active) return;
+        frame++; ctx.clearRect(0, 0, w, h);
+        
+        // Dynamic Background (Gets redder as it gets faster)
+        let heat = Math.min(100, (speed - 8) * 10);
+        ctx.fillStyle = `rgb(${79 + heat}, ${172 - heat}, ${254 - heat})`;
+        ctx.fillRect(0, 0, w, h);
 
-        // Sky
-        let sky = ctx.createLinearGradient(0, 0, 0, h);
-        sky.addColorStop(0, '#4facfe'); sky.addColorStop(1, '#00f2fe');
-        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#333'; ctx.fillRect(0, groundY, w, h - groundY); // Road
+        
+        player.update();
+        player.draw();
+        spawn();
 
-        // Ground
-        ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, groundY + 10, w, h);
-        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY + 30, w, 150);
-
-        if (state === 'PLAY') {
-            player.update();
-            subText.innerText = `SCORE: ${score} | HP: ${hp}`;
-
-            // ARCHERS (Towers in background)
-            ctx.fillStyle = '#5d4037';
-            ctx.fillRect(w - 80, groundY - 120, 50, 130);
-            ctx.fillStyle = '#fff'; // Archer Head
-            ctx.fillRect(w - 70, groundY - 140, 30, 30);
-
-            // Spawn Logic
-            if (frame % 60 === 0) obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
-            if (frame % 90 === 0) arrows.push({ x: w - 80, y: groundY - 120, w: 50, h: 8 });
-
-            // Obstacles
-            obstacles.forEach((o, i) => {
-                o.x -= speed;
-                ctx.fillStyle = '#8B4513'; ctx.fillRect(o.x, o.y, o.w, o.h);
-                if (player.x + 70 > o.x && player.x < o.x + o.w && player.y + 100 > o.y) {
-                    if (player.spin > 0) { obstacles.splice(i, 1); score += 5; }
-                    else { hp -= 20; obstacles.splice(i, 1); }
-                }
-                if (o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.15; }
-            });
-
-            // Arrows
-            arrows.forEach((a, i) => {
-                a.x -= (speed + 7);
-                ctx.fillStyle = '#fff'; ctx.fillRect(a.x, a.y, a.w, a.h);
-                if (player.x + 70 > a.x && player.x < a.x + a.w && player.y + 100 > a.y && player.y < a.y + 50) {
-                    if (player.spin > 0) { arrows.splice(i, 1); score += 10; }
-                    else { hp -= 25; arrows.splice(i, 1); }
-                }
-                if (a.x < -100) arrows.splice(i, 1);
-            });
-
-            if (hp <= 0) {
-                state = 'OVER';
-                mainText.innerText = "GAME OVER!";
-                subText.innerText = "TAP TO TRY AGAIN";
+        entities.forEach((ent, i) => {
+            ent.x -= speed;
+            if (ent.type === 'BAT') {
+                ctx.fillStyle = '#2d004d'; ctx.fillRect(ent.x, ent.y + Math.sin(frame/5)*20, ent.w, 30);
+            } else if (ent.type === 'CRATE') {
+                ctx.fillStyle = '#5d4037'; ctx.fillRect(ent.x, ent.y, ent.w, ent.h);
+            } else {
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(ent.x+30, ent.y+30, 25, 0, Math.PI*2); ctx.fill();
             }
-        }
 
-        drawRider(player.x, player.y);
+            // Combat
+            if (player.x + 100 > ent.x && player.x < ent.x + ent.w && player.y + 140 > ent.y && player.y < ent.y + ent.h + 50) {
+                if (player.attacking > 0) {
+                    entities.splice(i, 1); score += 500;
+                } else {
+                    hp -= 25; entities.splice(i, 1);
+                    if (hp <= 0) endGame();
+                }
+            }
+            if (ent.x < -100) { entities.splice(i, 1); score += 100; }
+        });
+
+        document.getElementById('score').innerText = score;
+        document.getElementById('hp').innerText = hp;
         requestAnimationFrame(loop);
     }
+
+    function endGame() {
+        active = false;
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('tungHigh', highScore);
+        }
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('high-score').innerText = highScore;
+        document.getElementById('game-over').style.display = 'flex';
+    }
+
+    document.getElementById('jumpBtn').addEventListener('pointerdown', () => { if (!player.jumping) { player.dy = -28; player.jumping = true; }});
+    document.getElementById('attackBtn').addEventListener('pointerdown', () => { player.attacking = 15; });
 
     loop();
 </script>
