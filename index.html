@@ -3,36 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Sahur - Pro</title>
+    <title>Tung Tung: Hardcore Show</title>
     <style>
         body { 
             margin: 0; padding: 0; overflow: hidden; 
-            background: #00b4d8; font-family: 'Arial Black', sans-serif;
+            background: #1e3a1e; font-family: 'Arial Black', sans-serif;
             touch-action: none; -webkit-user-select: none;
         }
-        canvas { display: block; }
+        canvas { display: block; filter: saturate(1.2); }
         #game-ui {
             position: absolute; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; pointer-events: none;
+            pointer-events: none;
         }
-        .score-box {
-            position: absolute; top: 20px; left: 20px;
-            color: #fff; font-size: 32px; text-shadow: 3px 3px 0 #000;
+        .hud {
+            position: absolute; top: 20px; left: 20px; width: 250px;
         }
-        .message-box {
-            background: rgba(0,0,0,0.7); color: gold; padding: 20px 40px;
-            border: 4px solid #fff; border-radius: 20px; text-align: center;
+        .hp-bar-bg { width: 100%; height: 25px; background: #333; border: 3px solid #fff; border-radius: 15px; overflow: hidden; }
+        #hp-fill { width: 100%; height: 100%; background: linear-gradient(to bottom, #44ff44, #116611); transition: width 0.2s; }
+        .score { color: #fff; font-size: 32px; text-shadow: 3px 3px 0 #000; margin-top: 10px; }
+        #overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85); color: gold; padding: 40px;
+            border: 6px solid #fff; border-radius: 30px; text-align: center;
         }
     </style>
 </head>
 <body>
 
     <div id="game-ui">
-        <div id="score" class="score-box">SCORE: 0</div>
-        <div id="start-msg" class="message-box">
-            <h1 style="margin:0; font-size: 40px;">TUNG TUNG RUSH</h1>
-            <p style="color: white;">TAP TO START & JUMP</p>
+        <div class="hud">
+            <div class="hp-bar-bg"><div id="hp-fill"></div></div>
+            <div id="score" class="score">SCORE: 0</div>
+        </div>
+        <div id="overlay">
+            <h1 style="font-size: 50px; margin: 0;">TUNG TUNG RUSH</h1>
+            <p style="color: white;">DODGE ARROWS & CANNONBALLS</p>
+            <p style="font-size: 18px; color: #ffcc00;">TAP ANYWHERE TO START</p>
         </div>
     </div>
 
@@ -41,114 +47,89 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const startMsg = document.getElementById('start-msg');
+    const hpFill = document.getElementById('hp-fill');
     const scoreEl = document.getElementById('score');
+    const overlay = document.getElementById('overlay');
 
     let w, h, groundY;
+    let shake = 0;
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h - 120;
+        groundY = h - 160;
     }
     window.addEventListener('resize', resize);
     resize();
 
     let state = 'START';
     let score = 0;
-    let speed = 8;
+    let hp = 100;
+    let speed = 10;
     let frame = 0;
     let obstacles = [];
 
-    // --- HIGH QUALITY DRAWING FUNCTIONS ---
+    // --- ENHANCED 3D DRAWING ---
 
-    function drawHog(x, y) {
-        // Body
-        ctx.fillStyle = '#ff99ad';
+    function drawCharacter(x, y) {
+        ctx.save();
+        if(shake > 0) ctx.translate(Math.random()*shake, Math.random()*shake);
+
+        // Hog Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(x+40, groundY+100, 50, 15, 0, 0, Math.PI*2); ctx.fill();
+
+        // The Hog (Detailed)
+        let hogGrad = ctx.createRadialGradient(x+30, y+50, 10, x+40, y+60, 60);
+        hogGrad.addColorStop(0, '#ffafbd'); hogGrad.addColorStop(1, '#ff4b2b');
+        ctx.fillStyle = hogGrad;
         ctx.beginPath();
-        ctx.ellipse(x + 40, y + 65, 45, 30, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.ellipse(x + 40, y + 65, 55, 38, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.stroke();
         
         // Tusks
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.moveTo(x + 75, y + 65);
-        ctx.quadraticCurveTo(x + 100, y + 40, x + 85, y + 75);
-        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath();
+        ctx.moveTo(x+85, y+65); ctx.quadraticCurveTo(x+115, y+35, x+95, y+85); ctx.fill(); ctx.stroke();
 
-        // Eye
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(x + 70, y + 55, 3, 0, Math.PI*2);
-        ctx.fill();
-    }
+        // Tung Tung (Detailed Shading)
+        let tGrad = ctx.createLinearGradient(x+20, y, x+60, y);
+        tGrad.addColorStop(0, '#a67c52'); tGrad.addColorStop(0.5, '#d2b48c'); tGrad.addColorStop(1, '#fff1e0');
+        ctx.fillStyle = tGrad;
+        ctx.beginPath(); ctx.roundRect(x + 20, y - 5, 45, 75, [25, 25, 10, 10]); ctx.fill(); ctx.stroke();
 
-    function drawTungTung(x, y) {
-        // Shadow under the hog
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.beginPath(); ctx.ellipse(x + 40, groundY + 95, 40, 10, 0, 0, Math.PI*2); ctx.fill();
+        // Staring Eyes (Meme Look)
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.arc(x+32, y+22, 10, 0, Math.PI*2); ctx.arc(x+55, y+22, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(x+34, y+22, 5, 0, Math.PI*2); ctx.arc(x+57, y+22, 5, 0, Math.PI*2); ctx.fill();
 
-        drawHog(x, y);
-
-        // Tung Tung Body (Cylinder)
-        ctx.fillStyle = '#d2b48c'; 
-        ctx.beginPath();
-        ctx.roundRect(x + 20, y + 5, 40, 60, [20, 20, 5, 5]);
-        ctx.fill(); ctx.stroke();
-
-        // Detailed Eyes (High Quality)
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(x + 30, y + 25, 8, 0, Math.PI*2);
-        ctx.arc(x + 50, y + 25, 8, 0, Math.PI*2);
-        ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(x + 32, y + 25, 4, 0, Math.PI*2);
-        ctx.arc(x + 52, y + 25, 4, 0, Math.PI*2);
-        ctx.fill();
-
-        // Mouth shouting "Sahur!"
-        ctx.fillStyle = '#4e0000';
-        ctx.beginPath();
-        ctx.ellipse(x + 40, y + 45, 8, 12, 0, 0, Math.PI*2);
-        ctx.fill();
+        // Shouting Mouth
+        ctx.fillStyle = '#440000';
+        ctx.beginPath(); ctx.ellipse(x+44, y+45, 10, 14, 0, 0, Math.PI*2); ctx.fill();
 
         // The Bat
         ctx.save();
-        ctx.translate(x + 55, y + 45);
-        ctx.rotate(-Math.PI / 4);
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(0, -50, 12, 60);
+        ctx.translate(x+65, y+55); ctx.rotate(-Math.PI/3);
+        ctx.fillStyle = '#8B4513'; ctx.fillRect(0, -60, 15, 70); ctx.strokeRect(0, -60, 15, 70);
+        ctx.restore();
+
         ctx.restore();
     }
 
-    function drawArcherTower(x) {
-        ctx.fillStyle = '#7d6e5d';
-        ctx.fillRect(x, h - 250, 60, 150); // Tower body
-        ctx.fillStyle = '#333';
-        ctx.fillRect(x - 5, h - 260, 70, 20); // Top
-    }
-
     const player = {
-        x: 100, y: 0, dy: 0, jump: -20, grav: 1.0,
+        x: 150, y: 0, dy: 0, jump: -24, grav: 1.3,
         update() {
             if (state !== 'PLAY') return;
             this.dy += this.grav;
             this.y += this.dy;
-            if (this.y > groundY - 80) {
-                this.y = groundY - 80;
-                this.dy = 0;
-            }
+            if (this.y > groundY - 100) { this.y = groundY - 100; this.dy = 0; }
         }
     };
 
     function start() {
-        score = 0; speed = 9; obstacles = []; 
-        player.y = groundY - 80;
-        state = 'PLAY';
-        startMsg.style.display = 'none';
+        score = 0; hp = 100; speed = 11; obstacles = []; state = 'PLAY';
+        overlay.style.display = 'none';
         scoreEl.innerText = "SCORE: 0";
+        hpFill.style.width = '100%';
     }
 
     function tap() {
@@ -161,54 +142,62 @@
 
     function loop() {
         frame++;
+        if(shake > 0) shake -= 1;
         ctx.clearRect(0, 0, w, h);
 
-        // Sky & Environment
+        // High Quality Sky
         let sky = ctx.createLinearGradient(0, 0, 0, h);
-        sky.addColorStop(0, '#00b4d8'); sky.addColorStop(1, '#90e0ef');
+        sky.addColorStop(0, '#4facfe'); sky.addColorStop(1, '#00f2fe');
         ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
 
-        // Clouds in distance
-        ctx.fillStyle = 'white';
-        for(let i=0; i<3; i++) {
-            ctx.beginPath(); ctx.arc(200 + (i*400) - (frame*0.5 % 1500), 100, 50, 0, Math.PI*2); ctx.fill();
-        }
+        // Parallax Clouds
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        for(let i=0; i<3; i++) ctx.beginPath(), ctx.arc((w+200 + (i*500) - frame*2) % (w+400) - 200, 150, 60, 0, Math.PI*2), ctx.fill();
 
-        // Road
-        ctx.fillStyle = '#555'; ctx.fillRect(0, groundY + 10, w, 200);
-        ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, groundY + 10, w, 15); // Grass edge
+        // Lush Green Grass (Layered)
+        ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, groundY + 10, w, h);
+        ctx.fillStyle = '#40916c'; ctx.fillRect(0, groundY + 40, w, h);
 
         if (state === 'PLAY') {
             player.update();
             
-            // Spawn Crate obstacles
-            if (frame % 70 === 0) {
-                obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
+            // Spawn logic (Difficult)
+            if (frame % 50 === 0) {
+                let type = Math.random() > 0.6 ? 'ARROW' : 'CANNON';
+                obstacles.push({ x: w, y: type === 'ARROW' ? groundY - 150 : groundY - 40, type, w: 40, h: 40 });
             }
 
             obstacles.forEach((o, i) => {
                 o.x -= speed;
-                // Draw Crate (Brown with X)
-                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
-                ctx.strokeStyle = '#fff'; ctx.strokeRect(o.x+5, o.y+5, o.w-10, o.h-10);
+                if(o.type === 'ARROW') {
+                    ctx.fillStyle = '#333'; ctx.fillRect(o.x, o.y, 60, 5); // Arrow
+                } else {
+                    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(o.x+20, o.y+20, 25, 0, Math.PI*2); ctx.fill(); // Cannonball
+                }
 
-                // Collision
-                if (player.x + 80 > o.x && player.x < o.x + o.w && player.y + 80 > o.y) {
-                    state = 'OVER';
-                    startMsg.style.display = 'block';
-                    startMsg.innerHTML = `<h1>CRASHED!</h1><p>Score: ${score}</p><p>TAP TO RETRY</p>`;
+                // Collision Detection
+                if (player.x + 80 > o.x && player.x < o.x + 40 && player.y + 100 > o.y && player.y < o.y + 40) {
+                    hp -= 25;
+                    shake = 15;
+                    obstacles.splice(i, 1);
+                    hpFill.style.width = hp + '%';
+                    if (hp <= 0) {
+                        state = 'OVER';
+                        overlay.style.display = 'block';
+                        overlay.innerHTML = `<h1 style="font-size:50px">DEFEAT!</h1><p>Score: ${score}</p><button onclick="location.reload()" style="padding:10px 20px; font-size:20px; border-radius:10px; border:none; background:gold; cursor:pointer;">RETRY</button>`;
+                    }
                 }
 
                 if (o.x < -100) {
                     obstacles.splice(i, 1);
                     score++;
-                    speed += 0.1;
+                    speed += 0.2;
                     scoreEl.innerText = "SCORE: " + score;
                 }
             });
         }
 
-        drawTungTung(player.x, player.y);
+        drawCharacter(player.x, player.y);
         requestAnimationFrame(loop);
     }
     loop();
