@@ -3,204 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Crossy Fix</title>
+    <title>Tung Tung Road Rush</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #87af3a; touch-action: none; -webkit-user-select: none; font-family: 'Arial Black', sans-serif; }
-        canvas { display: block; }
-        #ui {
-            position: absolute; top: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            padding-top: 40px; color: white; pointer-events: none; text-shadow: 3px 3px 0 #000;
+        body { margin: 0; background: #0055ff; overflow: hidden; touch-action: none; font-family: 'Courier New', monospace; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        canvas { 
+            background: #4facfe; 
+            border: 15px solid #ffcc00; 
+            border-radius: 40px; 
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.8);
+            image-rendering: pixelated;
         }
-        .score-text { font-size: 60px; margin: 0; }
-        .msg-text { font-size: 20px; background: rgba(0,0,0,0.3); padding: 10px 20px; border-radius: 20px; margin-top: 10px; }
+        .btn { 
+            position: absolute; bottom: 50px; width: 100px; height: 100px; 
+            border-radius: 50%; border: 5px solid #000; display: flex; 
+            align-items: center; justify-content: center; color: white; 
+            font-weight: bold; font-size: 18px; text-shadow: 2px 2px #000;
+        }
+        #jumpBtn { left: 50px; background: #8b5e34; } /* Barrel Style */
+        #attackBtn { right: 50px; background: #e63946; } /* Bat Style */
+        #hud { position: absolute; top: 60px; width: 80%; color: white; font-size: 20px; display: flex; justify-content: space-between; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <h1 id="scoreLabel" class="score-text">0</h1>
-        <div id="msgLabel" class="msg-text">TAP TO HOP!</div>
+<div id="game-container">
+    <div id="hud">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>LIVES: <span id="lives">3</span></div>
+        <div>DIST: <span id="dist">0</span>m</div>
     </div>
-
     <canvas id="gameCanvas"></canvas>
+    <div id="jumpBtn" class="btn">JUMP</div>
+    <div id="attackBtn" class="btn">ATTACK</div>
+</div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const scoreLabel = document.getElementById('scoreLabel');
-    const msgLabel = document.getElementById('msgLabel');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const distEl = document.getElementById('dist');
 
-    let w, h, state = 'PLAYING', score = 0, frame = 0;
-    const tileSize = 55;
-    let rows = [];
-    const rowTypes = ['GRASS', 'ROAD', 'ROAD', 'GRASS', 'ROAD'];
+    let w, h, groundY, frame = 0, score = 0, lives = 3, distance = 0, speed = 8;
+    let state = 'PLAY';
+    let objects = [];
 
     function resize() {
-        w = canvas.width = window.innerWidth;
-        h = canvas.height = window.innerHeight;
+        w = canvas.width = window.innerWidth * 0.9;
+        h = canvas.height = window.innerHeight * 0.7;
+        groundY = h - 80;
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // Isometric Projection Logic
-    function toScreen(x, z) {
-        return {
-            x: w / 2 + (x - z) * (tileSize * 0.7),
-            y: h / 1.6 + (x + z) * (tileSize * 0.35)
-        };
-    }
-
-    class Row {
-        constructor(z) {
-            this.z = z;
-            // First 5 rows are always safe grass
-            this.type = z < 5 ? 'GRASS' : rowTypes[Math.floor(Math.random() * rowTypes.length)];
-            this.obstacles = [];
-            this.speed = (Math.random() > 0.5 ? 1 : -1) * (1.5 + Math.random() * 2);
-            
-            if (this.type === 'ROAD') {
-                for (let i = 0; i < 2; i++) {
-                    this.obstacles.push({ x: (i * 6) - 6 });
-                }
-            }
-        }
-
-        update() {
-            this.obstacles.forEach(o => {
-                o.x += this.speed * 0.04;
-                if (o.x > 8) o.x = -8;
-                if (o.x < -8) o.x = 8;
-            });
-        }
-
-        draw(zOffset) {
-            for (let x = -5; x <= 5; x++) {
-                const pos = toScreen(x, this.z - zOffset);
-                // Draw tile shadow/side
-                ctx.fillStyle = this.type === 'GRASS' ? '#6d8c2e' : '#222';
-                ctx.beginPath();
-                ctx.moveTo(pos.x - tileSize*0.7, pos.y + tileSize*0.35);
-                ctx.lineTo(pos.x, pos.y + tileSize*0.7);
-                ctx.lineTo(pos.x + tileSize*0.7, pos.y + tileSize*0.35);
-                ctx.lineTo(pos.x + tileSize*0.7, pos.y + tileSize*0.45);
-                ctx.lineTo(pos.x, pos.y + tileSize*0.8);
-                ctx.lineTo(pos.x - tileSize*0.7, pos.y + tileSize*0.45);
-                ctx.fill();
-
-                // Draw tile top
-                ctx.fillStyle = this.type === 'GRASS' ? '#87af3a' : '#333';
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(pos.x + tileSize*0.7, pos.y + tileSize*0.35);
-                ctx.lineTo(pos.x, pos.y + tileSize*0.7);
-                ctx.lineTo(pos.x - tileSize*0.7, pos.y + tileSize*0.35);
-                ctx.closePath();
-                ctx.fill();
-            }
-
-            if (this.type === 'ROAD') {
-                this.obstacles.forEach(o => {
-                    const pos = toScreen(o.x, this.z - zOffset);
-                    drawVoxelCar(pos.x, pos.y - 5);
-                });
-            }
-        }
-    }
-
     const player = {
-        x: 0, z: 0, zOffset: 0, jumpAnim: 0,
-        reset() {
-            this.x = 0; this.z = 0; this.zOffset = 0; this.jumpAnim = 0;
-            score = 0;
-            rows = [];
-            for (let i = 0; i < 25; i++) rows.push(new Row(i));
+        x: 80, y: 0, dy: 0, jumping: false, attacking: 0,
+        update() {
+            this.dy += 1.2; this.y += this.dy;
+            if (this.y > groundY - 100) { this.y = groundY - 100; this.dy = 0; this.jumping = false; }
+            if (this.attacking > 0) this.attacking--;
+            distance += speed / 10;
+            distEl.innerText = Math.floor(distance);
         },
         draw() {
-            const pos = toScreen(this.x, this.z - this.zOffset);
-            const hopY = Math.sin((this.jumpAnim / 10) * Math.PI) * 25;
-            drawVoxelTungTung(pos.x, pos.y - 20 - hopY);
-            if (this.jumpAnim > 0) this.jumpAnim--;
-            this.zOffset += (this.z - this.zOffset) * 0.15;
+            ctx.save();
+            // The Pig
+            ctx.fillStyle = '#ffafcc';
+            ctx.fillRect(this.x, this.y + 50, 80, 50);
+            ctx.fillStyle = '#000'; ctx.fillRect(this.x + 70, this.y + 65, 8, 8); // Tusk
+            
+            // Tung Tung
+            ctx.fillStyle = '#d2b48c';
+            ctx.fillRect(this.x + 20, this.y, 40, 70);
+            
+            // The Bat (Attack animation)
+            ctx.fillStyle = '#8b4513';
+            if (this.attacking > 0) {
+                ctx.fillRect(this.x + 50, this.y + 20, 50, 15);
+            } else {
+                ctx.fillRect(this.x + 10, this.y + 40, 15, 40);
+            }
+            ctx.restore();
         }
     };
 
-    function drawVoxelTungTung(px, py) {
-        ctx.save();
-        // Hog Body
-        ctx.fillStyle = '#ff4d6d';
-        ctx.fillRect(px - 18, py, 36, 22);
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(px - 18, py, 36, 22);
-        // Tusks
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(px + 12, py + 8, 12, 6);
-        // Rider
-        ctx.fillStyle = '#d2b48c';
-        ctx.fillRect(px - 8, py - 32, 22, 38);
-        ctx.strokeRect(px - 8, py - 32, 22, 38);
-        // Eyes
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(px + 2, py - 28, 7, 7); ctx.fillRect(px + 14, py - 28, 7, 7);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(px + 5, py - 25, 3, 3); ctx.fillRect(px + 17, py - 25, 3, 3);
-        ctx.restore();
-    }
-
-    function drawVoxelCar(px, py) {
-        ctx.fillStyle = '#f94144';
-        ctx.fillRect(px - 28, py, 56, 18);
-        ctx.fillStyle = '#90be6d'; // Windows
-        ctx.fillRect(px - 15, py + 2, 30, 8);
-    }
-
-    // Initialize Game
-    player.reset();
-
-    function handleTap() {
-        if (state === 'OVER') {
-            player.reset();
-            state = 'PLAYING';
-            msgLabel.innerText = "HOP!";
-            return;
+    function spawnObject() {
+        if (frame % 80 === 0) {
+            const type = Math.random() > 0.5 ? 'CRATE' : 'BALL';
+            objects.push({ x: w, y: type === 'CRATE' ? groundY - 60 : groundY - 30, type, w: 60, h: 60 });
         }
-        player.z++;
-        player.jumpAnim = 10;
-        score = Math.max(score, player.z);
-        rows.push(new Row(rows[rows.length - 1].z + 1));
     }
 
-    window.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        handleTap();
+    function updateObjects() {
+        objects.forEach((o, i) => {
+            o.x -= speed;
+            // Draw
+            if (o.type === 'CRATE') {
+                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.strokeStyle = '#fff'; ctx.strokeRect(o.x+5, o.y+5, o.w-10, o.h-10);
+            } else {
+                ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(o.x+15, o.y+15, 20, 0, Math.PI*2); ctx.fill();
+            }
+
+            // Collision
+            let hit = player.x < o.x + o.w && player.x + 60 > o.x && player.y + 100 > o.y;
+            if (hit) {
+                if (player.attacking > 0) {
+                    objects.splice(i, 1); score += 100; scoreEl.innerText = score;
+                } else {
+                    lives--; livesEl.innerText = lives; objects.splice(i, 1);
+                    if (lives <= 0) location.reload();
+                }
+            }
+            if (o.x < -100) objects.splice(i, 1);
+        });
+    }
+
+    function drawBackground() {
+        // Grass and Road
+        ctx.fillStyle = '#87af3a'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#555'; ctx.fillRect(0, groundY, w, 100);
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<6; i++) ctx.fillRect((i*200 - (frame*speed)%200), groundY + 40, 60, 10);
+        
+        // Archer Tower (Background)
+        ctx.fillStyle = '#777'; ctx.fillRect(w - 150, groundY - 150, 80, 150);
+        ctx.fillStyle = '#ff0066'; ctx.fillRect(w - 130, groundY - 180, 40, 40); // Archer
+    }
+
+    document.getElementById('jumpBtn').addEventListener('touchstart', (e) => {
+        e.preventDefault(); if (!player.jumping) { player.dy = -22; player.jumping = true; }
+    });
+    document.getElementById('attackBtn').addEventListener('touchstart', (e) => {
+        e.preventDefault(); player.attacking = 20;
     });
 
     function loop() {
         frame++;
-        ctx.fillStyle = '#4a6d2f'; // Darker green for background
-        ctx.fillRect(0, 0, w, h);
-
-        rows.forEach(r => {
-            if (state === 'PLAYING') r.update();
-            r.draw(player.zOffset);
-        });
-
+        drawBackground();
+        player.update();
         player.draw();
-
-        if (state === 'PLAYING') {
-            scoreLabel.innerText = score;
-            // Check Collision
-            const pRow = rows.find(r => r.z === player.z);
-            if (pRow && pRow.type === 'ROAD') {
-                pRow.obstacles.forEach(o => {
-                    if (Math.abs(o.x - player.x) < 0.9) {
-                        state = 'OVER';
-                        msgLabel.innerText = "GAME OVER! TAP TO RETRY";
-                    }
-                });
-            }
-        }
-
-        if (rows.length > 40) rows.shift();
+        spawnObject();
+        updateObjects();
         requestAnimationFrame(loop);
     }
     loop();
