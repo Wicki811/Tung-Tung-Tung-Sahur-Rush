@@ -3,33 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Sahur Pro</title>
+    <title>Tung Tung Sahur Fix</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #1a2a0a; touch-action: none; -webkit-user-select: none; font-family: sans-serif; }
-        canvas { display: block; image-rendering: auto; }
-        #instruction {
-            position: absolute; bottom: 20px; width: 100%; text-align: center;
-            color: white; font-weight: bold; text-shadow: 2px 2px 0 #000; pointer-events: none;
+        body { margin: 0; padding: 0; overflow: hidden; background: #2d5a27; touch-action: none; -webkit-user-select: none; }
+        canvas { display: block; }
+        #overlay {
+            position: absolute; top: 20px; width: 100%; text-align: center;
+            color: white; font-family: 'Arial Black', sans-serif; pointer-events: none;
+            text-shadow: 3px 3px 0 #000;
         }
     </style>
 </head>
 <body>
 
-    <div id="instruction">TAP ANYWHERE TO JUMP / DOUBLE TAP TO SPIN</div>
+    <div id="overlay">
+        <h1 id="main-text">TAP TO START THE SHOW</h1>
+        <h2 id="sub-text">SCORE: 0 | HP: 100</h2>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const mainText = document.getElementById('main-text');
+    const subText = document.getElementById('sub-text');
 
     let w, h, groundY;
-    let state = 'MENU'; // States: MENU, PLAYING, GAMEOVER
-    let score = 0;
-    let hp = 100;
-    let speed = 10;
-    let frame = 0;
-    let obstacles = [];
-    let arrows = [];
+    let state = 'MENU'; // MENU, PLAY, OVER
+    let frame = 0, score = 0, hp = 100, speed = 10;
+    let obstacles = [], arrows = [];
 
     function resize() {
         w = canvas.width = window.innerWidth;
@@ -39,16 +42,34 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // --- CHARACTER DRAWING (SAME AS IMAGE) ---
-    function drawTungTung(x, y, isSpinning) {
+    const player = {
+        x: 100, y: 0, dy: 0, jumps: 0, spin: 0,
+        update() {
+            if (state === 'MENU') {
+                this.y = groundY - 100; // Just sit there on menu
+                return;
+            }
+            this.dy += 1.4;
+            this.y += this.dy;
+            if (this.y > groundY - 100) {
+                this.y = groundY - 100;
+                this.dy = 0;
+                this.jumps = 0;
+            }
+            if (this.spin > 0) this.spin--;
+        }
+    };
+
+    // --- CHARACTER DRAWING (Image Match) ---
+    function drawRider(x, y) {
         ctx.save();
-        if (isSpinning) {
+        if (player.spin > 0) {
             ctx.translate(x + 40, y + 50);
-            ctx.rotate(frame * 0.4);
+            ctx.rotate(frame * 0.5);
             ctx.translate(-(x + 40), -(y + 50));
         }
 
-        // The Hog
+        // Hog
         let hG = ctx.createRadialGradient(x+30, y+50, 5, x+40, y+65, 50);
         hG.addColorStop(0, '#ff99ac'); hG.addColorStop(1, '#e63946');
         ctx.fillStyle = hG;
@@ -59,7 +80,7 @@
         ctx.fillStyle = '#fff'; ctx.beginPath();
         ctx.moveTo(x+85, y+70); ctx.bezierCurveTo(x+115, y+40, x+120, y+50, x+95, y+85); ctx.fill(); ctx.stroke();
 
-        // The Rider (Cylinder)
+        // Rider (Tung Tung)
         let wG = ctx.createLinearGradient(x+20, y, x+65, y);
         wG.addColorStop(0, '#8b5e34'); wG.addColorStop(0.5, '#d2b48c'); wG.addColorStop(1, '#fff4e0');
         ctx.fillStyle = wG;
@@ -71,54 +92,29 @@
         ctx.fillStyle = '#000'; ctx.beginPath();
         ctx.arc(x+34, y+22, 4, 0, Math.PI*2); ctx.arc(x+58, y+22, 4, 0, Math.PI*2); ctx.fill();
 
-        // The Bat
-        ctx.save(); ctx.translate(x+65, y+55); ctx.rotate(-Math.PI/4);
-        ctx.fillStyle = '#5d4037'; ctx.fillRect(0, -60, 15, 75); ctx.strokeRect(0, -60, 15, 75);
-        ctx.restore();
+        // Shouting Mouth
+        ctx.fillStyle = '#3d0000'; ctx.beginPath();
+        ctx.ellipse(x+44, y+48, 10, 15, 0, 0, Math.PI*2); ctx.fill();
 
         ctx.restore();
     }
 
-    const player = {
-        x: 100, y: 0, dy: 0, jumps: 0, spinTime: 0,
-        update() {
-            if (state !== 'PLAYING') return;
-            this.dy += 1.4;
-            this.y += this.dy;
-            if (this.y > groundY - 100) {
-                this.y = groundY - 100;
-                this.dy = 0;
-                this.jumps = 0;
-            }
-            if (this.spinTime > 0) this.spinTime--;
-        }
-    };
-
-    // --- GAME CONTROL ---
-    function handleAction(e) {
-        if (e) e.preventDefault();
-        
-        if (state === 'MENU' || state === 'GAMEOVER') {
-            // Reset and Start
-            state = 'PLAYING';
-            score = 0;
-            hp = 100;
-            speed = 10;
-            obstacles = [];
-            arrows = [];
-            player.y = groundY - 100;
-        } else if (state === 'PLAYING') {
+    // --- THE FIX: POINTERDOWN ---
+    // Pointerdown works for BOTH touch and mouse on iPad
+    window.addEventListener('pointerdown', (e) => {
+        if (state === 'MENU' || state === 'OVER') {
+            state = 'PLAY';
+            score = 0; hp = 100; speed = 10;
+            obstacles = []; arrows = [];
+            mainText.innerText = "SAHUR WAR!";
+        } else {
             if (player.jumps < 2) {
                 player.dy = -22;
                 player.jumps++;
-                if (player.jumps === 2) player.spinTime = 20;
+                if (player.jumps === 2) player.spin = 20;
             }
         }
-    }
-
-    // Universal listeners for iPad
-    window.addEventListener('touchstart', handleAction, { passive: false });
-    window.addEventListener('mousedown', handleAction);
+    });
 
     function loop() {
         frame++;
@@ -131,74 +127,52 @@
 
         // Ground
         ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, groundY + 10, w, h);
-        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY + 30, w, 120);
+        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY + 30, w, 150);
 
-        if (state === 'MENU') {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(0, 0, w, h);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 50px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('TUNG TUNG SAHUR', w/2, h/2 - 20);
-            ctx.font = '25px sans-serif';
-            ctx.fillText('TAP ANYWHERE TO START', w/2, h/2 + 40);
-        }
-
-        if (state === 'PLAYING') {
+        if (state === 'PLAY') {
             player.update();
+            subText.innerText = `SCORE: ${score} | HP: ${hp}`;
 
-            // Spawn Archers (Visual only background)
-            ctx.fillStyle = '#333';
-            ctx.fillRect(w - 60, groundY - 100, 40, 100); // Archer Tower
+            // ARCHERS (Towers in background)
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(w - 80, groundY - 120, 50, 130);
+            ctx.fillStyle = '#fff'; // Archer Head
+            ctx.fillRect(w - 70, groundY - 140, 30, 30);
 
-            // Spawn Obstacles (Boxes)
-            if (frame % 70 === 0) obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
-            
-            // Spawn Arrows (From the archer)
-            if (frame % 100 === 0) arrows.push({ x: w - 60, y: groundY - 120, w: 40, h: 6 });
+            // Spawn Logic
+            if (frame % 60 === 0) obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
+            if (frame % 90 === 0) arrows.push({ x: w - 80, y: groundY - 120, w: 50, h: 8 });
 
-            // Handle Boxes
+            // Obstacles
             obstacles.forEach((o, i) => {
                 o.x -= speed;
-                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(o.x, o.y, o.w, o.h);
                 if (player.x + 70 > o.x && player.x < o.x + o.w && player.y + 100 > o.y) {
-                    if (player.spinTime > 0) { obstacles.splice(i, 1); score += 5; } 
+                    if (player.spin > 0) { obstacles.splice(i, 1); score += 5; }
                     else { hp -= 20; obstacles.splice(i, 1); }
                 }
-                if (o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.1; }
+                if (o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.15; }
             });
 
-            // Handle Arrows
+            // Arrows
             arrows.forEach((a, i) => {
-                a.x -= (speed + 6);
+                a.x -= (speed + 7);
                 ctx.fillStyle = '#fff'; ctx.fillRect(a.x, a.y, a.w, a.h);
-                if (player.x + 70 > a.x && player.x < a.x + a.w && player.y + 100 > a.y && player.y < a.y + 40) {
-                    if (player.spinTime > 0) { arrows.splice(i, 1); score += 10; }
+                if (player.x + 70 > a.x && player.x < a.x + a.w && player.y + 100 > a.y && player.y < a.y + 50) {
+                    if (player.spin > 0) { arrows.splice(i, 1); score += 10; }
                     else { hp -= 25; arrows.splice(i, 1); }
                 }
                 if (a.x < -100) arrows.splice(i, 1);
             });
 
-            // HUD
-            ctx.fillStyle = '#000'; ctx.fillRect(20, 20, 200, 20);
-            ctx.fillStyle = '#ff0000'; ctx.fillRect(20, 20, hp * 2, 20);
-            ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'left';
-            ctx.fillText('SCORE: ' + score, 20, 80);
-
-            if (hp <= 0) state = 'GAMEOVER';
+            if (hp <= 0) {
+                state = 'OVER';
+                mainText.innerText = "GAME OVER!";
+                subText.innerText = "TAP TO TRY AGAIN";
+            }
         }
 
-        if (state === 'GAMEOVER') {
-            ctx.fillStyle = 'rgba(255,0,0,0.4)';
-            ctx.fillRect(0, 0, w, h);
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-            ctx.font = 'bold 60px sans-serif';
-            ctx.fillText('WASTED', w/2, h/2);
-            ctx.font = '25px sans-serif';
-            ctx.fillText('TAP TO RETRY', w/2, h/2 + 60);
-        }
-
-        drawTungTung(player.x, player.y, player.spinTime > 0);
+        drawRider(player.x, player.y);
         requestAnimationFrame(loop);
     }
 
