@@ -2,141 +2,180 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tung Tung Obby HD</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tung Tung Sahur Fix</title>
     <style>
-        :root { --safe-bottom: env(safe-area-inset-bottom, 40px); }
-        body { margin: 0; overflow: hidden; background: #4facfe; touch-action: none; font-family: sans-serif; }
-        canvas { display: block; image-rendering: pixelated; }
-        
-        /* UI HUD */
-        #hud {
-            position: absolute; top: 40px; width: 100%; text-align: center;
-            color: white; font-size: 32px; font-weight: 900; text-shadow: 3px 3px 0 #000;
-            pointer-events: none;
+        body { margin: 0; padding: 0; overflow: hidden; background: #2d5a27; touch-action: none; -webkit-user-select: none; }
+        canvas { display: block; }
+        #overlay {
+            position: absolute; top: 20px; width: 100%; text-align: center;
+            color: white; font-family: 'Arial Black', sans-serif; pointer-events: none;
+            text-shadow: 3px 3px 0 #000;
         }
-
-        /* iPad Button Fix: Pushed high and large */
-        .controls {
-            position: absolute; bottom: calc(var(--safe-bottom) + 100px);
-            width: 100%; display: flex; justify-content: space-between;
-            padding: 0 60px; box-sizing: border-box;
-        }
-        .dir-pad { display: flex; gap: 20px; }
-        .btn {
-            width: 100px; height: 100px; border-radius: 20px; border: 4px solid #fff;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; font-size: 18px; box-shadow: 0 8px 0 #000;
-            background: rgba(0,0,0,0.3); backdrop-filter: blur(5px);
-        }
-        #jumpBtn { background: #ff0066; width: 140px; height: 140px; border-radius: 50%; }
-        .btn:active { transform: translateY(5px); box-shadow: 0 2px 0 #000; }
-        
-        #wicki { position: absolute; top: 10px; right: 20px; color: #fff; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-<div id="hud">SCORE: <span id="score">0</span></div>
-<div id="wicki">by wicki</div>
-
-<canvas id="game"></canvas>
-
-<div class="controls">
-    <div class="dir-pad">
-        <div class="btn" id="lBtn">LEFT</div>
-        <div class="btn" id="rBtn">RIGHT</div>
+    <div id="overlay">
+        <h1 id="main-text">TAP TO START THE SHOW</h1>
+        <h2 id="sub-text">SCORE: 0 | HP: 100</h2>
     </div>
-    <div class="btn" id="jumpBtn">JUMP</div>
-</div>
+
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-    const canvas = document.getElementById('game');
+    const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    let w, h, frame = 0, score = 0;
+    const mainText = document.getElementById('main-text');
+    const subText = document.getElementById('sub-text');
+
+    let w, h, groundY;
+    let state = 'MENU'; // MENU, PLAY, OVER
+    let frame = 0, score = 0, hp = 100, speed = 10;
+    let obstacles = [], arrows = [];
 
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
+        groundY = h - 150;
     }
     window.addEventListener('resize', resize);
     resize();
 
     const player = {
-        x: 0, y: 0, z: 0, dy: 0, tx: 0,
+        x: 100, y: 0, dy: 0, jumps: 0, spin: 0,
         update() {
-            this.dy -= 0.6; // Gravity
+            if (state === 'MENU') {
+                this.y = groundY - 100; // Just sit there on menu
+                return;
+            }
+            this.dy += 1.4;
             this.y += this.dy;
-            if (this.y < 0) { this.y = 0; this.dy = 0; }
-            this.x += (this.tx - this.x) * 0.15;
-            this.z += 0.15; // Forward movement
-            score = Math.floor(this.z * 10);
-            document.getElementById('score').innerText = score;
+            if (this.y > groundY - 100) {
+                this.y = groundY - 100;
+                this.dy = 0;
+                this.jumps = 0;
+            }
+            if (this.spin > 0) this.spin--;
         }
     };
 
-    const platforms = [];
-    for(let i=0; i<15; i++) {
-        platforms.push({ x: (Math.random()-0.5)*10, z: i*8, color: i%2===0?'#33ff33':'#ff0066' });
-    }
-
-    function draw() {
-        ctx.fillStyle = '#4facfe'; // Sky
-        ctx.fillRect(0,0,w,h);
-
-        // Draw Platforms
-        platforms.sort((a,b) => b.z - a.z); // Depth sorting
-        platforms.forEach(p => {
-            let relZ = p.z - player.z;
-            if(relZ < -10) { p.z += 120; p.x = (Math.random()-0.5)*12; }
-
-            if(relZ > 0) {
-                let scale = 400 / relZ;
-                let sx = w/2 + (p.x - player.x) * scale;
-                let sy = h/2 + (5 - player.y) * scale;
-                let sw = 4 * scale;
-                let sh = 0.5 * scale;
-
-                ctx.fillStyle = p.color;
-                ctx.fillRect(sx - sw/2, sy, sw, sh);
-                ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-                ctx.strokeRect(sx - sw/2, sy, sw, sh);
-            }
-        });
-
-        // Draw Tung Tung (Character)
-        let charScale = 30; 
-        let cx = w/2;
-        let cy = h/2 + 100 - (player.y * 3);
-
+    // --- CHARACTER DRAWING (Image Match) ---
+    function drawRider(x, y) {
         ctx.save();
-        ctx.translate(cx, cy);
-        // Log Body
-        ctx.fillStyle = '#d2b48c';
-        ctx.fillRect(-25, -80, 50, 100);
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
-        ctx.strokeRect(-25, -80, 50, 100);
-        // Eyes
-        ctx.fillStyle = 'white';
-        ctx.fillRect(-15, -65, 12, 12); ctx.fillRect(5, -65, 12, 12);
-        ctx.fillStyle = 'black';
-        ctx.fillRect(-11, -61, 4, 4); ctx.fillRect(9, -61, 4, 4);
-        // Mouth
-        ctx.fillRect(-10, -35, 20, 6);
+        if (player.spin > 0) {
+            ctx.translate(x + 40, y + 50);
+            ctx.rotate(frame * 0.5);
+            ctx.translate(-(x + 40), -(y + 50));
+        }
+
+        // Hog
+        let hG = ctx.createRadialGradient(x+30, y+50, 5, x+40, y+65, 50);
+        hG.addColorStop(0, '#ff99ac'); hG.addColorStop(1, '#e63946');
+        ctx.fillStyle = hG;
+        ctx.beginPath(); ctx.ellipse(x+40, y+70, 55, 38, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+
+        // Tusks
+        ctx.fillStyle = '#fff'; ctx.beginPath();
+        ctx.moveTo(x+85, y+70); ctx.bezierCurveTo(x+115, y+40, x+120, y+50, x+95, y+85); ctx.fill(); ctx.stroke();
+
+        // Rider (Tung Tung)
+        let wG = ctx.createLinearGradient(x+20, y, x+65, y);
+        wG.addColorStop(0, '#8b5e34'); wG.addColorStop(0.5, '#d2b48c'); wG.addColorStop(1, '#fff4e0');
+        ctx.fillStyle = wG;
+        ctx.beginPath(); ctx.roundRect(x+20, y-5, 45, 80, [25, 25, 5, 5]); ctx.fill(); ctx.stroke();
+
+        // Staring Eyes
+        ctx.fillStyle = '#fff'; ctx.beginPath();
+        ctx.arc(x+32, y+22, 11, 0, Math.PI*2); ctx.arc(x+56, y+22, 11, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#000'; ctx.beginPath();
+        ctx.arc(x+34, y+22, 4, 0, Math.PI*2); ctx.arc(x+58, y+22, 4, 0, Math.PI*2); ctx.fill();
+
+        // Shouting Mouth
+        ctx.fillStyle = '#3d0000'; ctx.beginPath();
+        ctx.ellipse(x+44, y+48, 10, 15, 0, 0, Math.PI*2); ctx.fill();
+
         ctx.restore();
     }
 
-    // iPad Controls
-    const btn = (id, fn) => document.getElementById(id).addEventListener('touchstart', (e) => { e.preventDefault(); fn(); });
-    btn('lBtn', () => player.tx -= 2);
-    btn('rBtn', () => player.tx += 2);
-    btn('jumpBtn', () => { if(player.y === 0) player.dy = 14; });
+    // --- THE FIX: POINTERDOWN ---
+    // Pointerdown works for BOTH touch and mouse on iPad
+    window.addEventListener('pointerdown', (e) => {
+        if (state === 'MENU' || state === 'OVER') {
+            state = 'PLAY';
+            score = 0; hp = 100; speed = 10;
+            obstacles = []; arrows = [];
+            mainText.innerText = "SAHUR WAR!";
+        } else {
+            if (player.jumps < 2) {
+                player.dy = -22;
+                player.jumps++;
+                if (player.jumps === 2) player.spin = 20;
+            }
+        }
+    });
 
     function loop() {
-        draw();
-        player.update();
+        frame++;
+        ctx.clearRect(0, 0, w, h);
+
+        // Sky
+        let sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#4facfe'); sky.addColorStop(1, '#00f2fe');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+
+        // Ground
+        ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, groundY + 10, w, h);
+        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY + 30, w, 150);
+
+        if (state === 'PLAY') {
+            player.update();
+            subText.innerText = `SCORE: ${score} | HP: ${hp}`;
+
+            // ARCHERS (Towers in background)
+            ctx.fillStyle = '#5d4037';
+            ctx.fillRect(w - 80, groundY - 120, 50, 130);
+            ctx.fillStyle = '#fff'; // Archer Head
+            ctx.fillRect(w - 70, groundY - 140, 30, 30);
+
+            // Spawn Logic
+            if (frame % 60 === 0) obstacles.push({ x: w, y: groundY - 40, w: 60, h: 60 });
+            if (frame % 90 === 0) arrows.push({ x: w - 80, y: groundY - 120, w: 50, h: 8 });
+
+            // Obstacles
+            obstacles.forEach((o, i) => {
+                o.x -= speed;
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                if (player.x + 70 > o.x && player.x < o.x + o.w && player.y + 100 > o.y) {
+                    if (player.spin > 0) { obstacles.splice(i, 1); score += 5; }
+                    else { hp -= 20; obstacles.splice(i, 1); }
+                }
+                if (o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.15; }
+            });
+
+            // Arrows
+            arrows.forEach((a, i) => {
+                a.x -= (speed + 7);
+                ctx.fillStyle = '#fff'; ctx.fillRect(a.x, a.y, a.w, a.h);
+                if (player.x + 70 > a.x && player.x < a.x + a.w && player.y + 100 > a.y && player.y < a.y + 50) {
+                    if (player.spin > 0) { arrows.splice(i, 1); score += 10; }
+                    else { hp -= 25; arrows.splice(i, 1); }
+                }
+                if (a.x < -100) arrows.splice(i, 1);
+            });
+
+            if (hp <= 0) {
+                state = 'OVER';
+                mainText.innerText = "GAME OVER!";
+                subText.innerText = "TAP TO TRY AGAIN";
+            }
+        }
+
+        drawRider(player.x, player.y);
         requestAnimationFrame(loop);
     }
+
     loop();
 </script>
 </body>
