@@ -3,168 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tung Tung Sahur: INSANE</title>
+    <title>Tung Tung: Sahur War Pro</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #1a2a0a; font-family: 'Arial Black', sans-serif; touch-action: none; -webkit-user-select: none; }
-        canvas { display: block; }
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .hud { position: absolute; top: 20px; left: 20px; }
-        .hp-container { width: 200px; height: 20px; background: #222; border: 3px solid #fff; border-radius: 10px; overflow: hidden; }
-        #hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff6600); transition: 0.1s; }
-        .score { color: gold; font-size: 38px; text-shadow: 4px 4px 0 #000; margin-top: 5px; }
-        #msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white; background: rgba(0,0,0,0.8); padding: 40px; border-radius: 30px; border: 5px solid gold; display: block; }
-        button { padding: 15px 30px; font-size: 24px; background: gold; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        body { margin: 0; overflow: hidden; background: #2d5a27; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        canvas { display: block; filter: contrast(1.1) saturate(1.2); }
+        #ui { position: absolute; top: 0; left: 0; width: 100%; padding: 25px; pointer-events: none; }
+        .stats { display: flex; align-items: center; gap: 20px; }
+        .hp-bar { width: 250px; height: 25px; background: #222; border: 3px solid #fff; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #hp-fill { width: 100%; height: 100%; background: linear-gradient(to bottom, #ff3333, #880000); transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .score { color: #ffd700; font-size: 42px; text-shadow: 4px 4px 0 #000; }
+        #menu { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); color: white; text-align: center; }
+        .card { background: #5d4037; padding: 40px; border: 8px solid #ffcc00; border-radius: 40px; box-shadow: 0 20px 0 #3e2723; }
+        button { padding: 20px 50px; font-size: 28px; background: #ffcc00; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; transform: translateY(0); transition: 0.1s; }
+        button:active { transform: translateY(5px); }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <div class="hud">
-            <div class="hp-container"><div id="hp-bar"></div></div>
-            <div id="score" class="score">0</div>
-        </div>
-        <div id="msg">
-            <h1 style="font-size: 50px; margin: 0;">SAHUR WAR</h1>
-            <p>DOUBLE JUMP ENABLED</p>
-            <button onclick="start()">START SHOW</button>
-        </div>
+<div id="ui">
+    <div class="stats">
+        <div class="hp-bar"><div id="hp-fill"></div></div>
+        <div id="score" class="score">0</div>
     </div>
+</div>
 
-    <canvas id="gameCanvas"></canvas>
+<div id="menu">
+    <div class="card">
+        <h1 style="font-size: 60px; margin: 0;">TUNG TUNG WAR</h1>
+        <p style="font-size: 20px;">TAP TO JUMP | DOUBLE TAP TO SPIN ATTACK</p>
+        <button onclick="startGame()">START SHOW</button>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const hpBar = document.getElementById('hp-bar');
+    const hpFill = document.getElementById('hp-fill');
     const scoreEl = document.getElementById('score');
-    const msg = document.getElementById('msg');
+    const menu = document.getElementById('menu');
 
-    let w, h, groundY;
-    let shake = 0;
+    let w, h, groundY, state = 'MENU', score = 0, hp = 100, speed = 12, frame = 0;
+    let obstacles = [], arrows = [], particles = [], shake = 0;
+
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h - 150;
+        groundY = h - 180;
     }
     window.addEventListener('resize', resize);
     resize();
 
-    let state = 'MENU';
-    let score = 0;
-    let hp = 100;
-    let speed = 12; // Starting at high speed
-    let frame = 0;
-    let obstacles = [];
+    // --- HIGH-QUALITY 3D CHARACTER ENGINE ---
+    function drawRider(x, y, spin) {
+        ctx.save();
+        if(shake > 0) { ctx.translate(Math.random()*shake, Math.random()*shake); shake--; }
+        if(spin > 0) ctx.rotate(spin * 0.2); // Spin animation
 
-    const player = {
-        x: 150, y: 0, dy: 0, jumps: 0, 
-        draw() {
-            ctx.save();
-            if(shake > 0) ctx.translate(Math.random()*shake-shake/2, Math.random()*shake-shake/2);
-            
-            let px = this.x, py = this.y;
-            // 3D Hog
-            let g1 = ctx.createRadialGradient(px+30, py+50, 10, px+40, py+60, 60);
-            g1.addColorStop(0, '#ff99ac'); g1.addColorStop(1, '#e63946');
-            ctx.fillStyle = g1;
-            ctx.beginPath(); ctx.ellipse(px+40, py+65, 55, 35, 0, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
-            
-            // Tusks
-            ctx.fillStyle = '#fff'; ctx.beginPath();
-            ctx.moveTo(px+80, py+65); ctx.quadraticCurveTo(px+110, py+35, px+90, py+80); ctx.fill(); ctx.stroke();
+        // Hog Shading
+        let hG = ctx.createRadialGradient(x+30, y+50, 5, x+40, y+65, 60);
+        hG.addColorStop(0, '#ff9fb2'); hG.addColorStop(1, '#c9184a');
+        ctx.fillStyle = hG;
+        ctx.beginPath(); ctx.ellipse(x+40, y+70, 58, 40, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#330000'; ctx.lineWidth = 3; ctx.stroke();
 
-            // Tung Tung Cylinder
-            let g2 = ctx.createLinearGradient(px+20, py, px+60, py);
-            g2.addColorStop(0, '#a67c52'); g2.addColorStop(0.5, '#d2b48c'); g2.addColorStop(1, '#fff');
-            ctx.fillStyle = g2;
-            ctx.beginPath(); ctx.roundRect(px+20, py-10, 45, 80, [25, 25, 5, 5]); ctx.fill(); ctx.stroke();
+        // Curved Tusks
+        ctx.fillStyle = '#f8f9fa'; ctx.beginPath();
+        ctx.moveTo(x+88, y+70); ctx.bezierCurveTo(x+120, y+35, x+125, y+50, x+100, y+85); ctx.fill(); ctx.stroke();
 
-            // The Face (High Quality)
-            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(px+33, py+18, 10, 0, Math.PI*2); ctx.arc(px+56, py+18, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(px+35, py+18, 5, 0, Math.PI*2); ctx.arc(px+58, py+18, 5, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#440000'; ctx.beginPath(); ctx.ellipse(px+45, py+42, 12, 15, 0, 0, Math.PI*2); ctx.fill();
+        // Wooden Body (Cylinder)
+        let wG = ctx.createLinearGradient(x+20, y, x+70, y);
+        wG.addColorStop(0, '#7f5539'); wG.addColorStop(0.5, '#b08968'); wG.addColorStop(1, '#ede0d4');
+        ctx.fillStyle = wG;
+        ctx.beginPath(); ctx.roundRect(x+20, y-10, 48, 85, [25, 25, 10, 10]); ctx.fill(); ctx.stroke();
 
-            // Bat
-            ctx.save(); ctx.translate(px+65, py+55); ctx.rotate(-Math.PI/3);
-            ctx.fillStyle = '#8B4513'; ctx.fillRect(0, -65, 16, 75); ctx.strokeRect(0, -65, 16, 75);
-            ctx.restore(); ctx.restore();
-        },
+        // Accurate Staring Eyes
+        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(x+32, y+20, 12, 0, Math.PI*2); ctx.arc(x+58, y+20, 12, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(x+34, y+20, 4.5, 0, Math.PI*2); ctx.arc(x+60, y+20, 4.5, 0, Math.PI*2); ctx.fill();
+
+        // Shouting Mouth
+        ctx.fillStyle = '#440000'; ctx.beginPath(); ctx.ellipse(x+45, y+48, 11, 16, 0, 0, Math.PI*2); ctx.fill();
+
+        // Bat
+        ctx.save(); ctx.translate(x+68, y+55); ctx.rotate(-Math.PI/3.5);
+        let bG = ctx.createLinearGradient(0, -70, 18, -70);
+        bG.addColorStop(0, '#432818'); bG.addColorStop(1, '#99582a');
+        ctx.fillStyle = bG; ctx.fillRect(0, -70, 18, 85); ctx.strokeRect(0, -70, 18, 85);
+        ctx.restore(); ctx.restore();
+    }
+
+    const player = { x: 160, y: 0, dy: 0, jumps: 0, spin: 0, 
         update() {
             if(state !== 'PLAY') return;
-            this.dy += 1.4; // Stronger Gravity
-            this.y += this.dy;
-            if(this.y > groundY - 100) { this.y = groundY - 100; this.dy = 0; this.jumps = 0; }
+            this.dy += 1.5; this.y += this.dy;
+            if(this.y > groundY - 110) { this.y = groundY - 110; this.dy = 0; this.jumps = 0; }
+            if(this.spin > 0) this.spin--;
         }
     };
 
-    function start() {
-        score = 0; hp = 100; speed = 12; obstacles = []; state = 'PLAY';
-        msg.style.display = 'none';
-        scoreEl.innerText = "0";
-        hpBar.style.width = '100%';
+    function startGame() {
+        state = 'PLAY'; score = 0; hp = 100; speed = 13; obstacles = []; arrows = [];
+        menu.style.display = 'none';
+        hpFill.style.width = '100%';
     }
 
-    function jump() {
-        if(state === 'PLAY' && player.jumps < 2) {
-            player.dy = -22;
-            player.jumps++;
+    window.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if(state === 'PLAY') {
+            if(player.jumps < 2) { 
+                player.dy = -25; player.jumps++; 
+                if(player.jumps === 2) player.spin = 15; // Spin Attack
+            }
         }
-    }
-
-    window.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, {passive: false});
-    window.addEventListener('mousedown', jump);
+    }, {passive: false});
 
     function loop() {
         frame++;
-        if(shake > 0) shake *= 0.9;
         ctx.clearRect(0, 0, w, h);
 
-        // Sky Box
+        // Parallax Background
         let sky = ctx.createLinearGradient(0, 0, 0, h);
-        sky.addColorStop(0, '#1e3c72'); sky.addColorStop(1, '#2a5298');
+        sky.addColorStop(0, '#48cae4'); sky.addColorStop(1, '#90e0ef');
         ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
 
-        // Background Towers (From Image)
-        ctx.fillStyle = '#444';
-        for(let i=0; i<3; i++) {
-            let tx = (w + (i*600) - frame*4) % (w+400) - 200;
-            ctx.fillRect(tx, h-350, 80, 250);
-            ctx.fillStyle = '#222'; ctx.fillRect(tx-10, h-360, 100, 30); ctx.fillStyle = '#444';
-        }
-
-        // Ground
-        ctx.fillStyle = '#1b4332'; ctx.fillRect(0, groundY + 10, w, h);
+        // Moving Grass Layers
+        ctx.fillStyle = '#386641'; ctx.fillRect(0, groundY + 10, w, h);
+        ctx.fillStyle = '#6a994e'; ctx.fillRect(0, groundY + 50, w, h);
 
         if(state === 'PLAY') {
             player.update();
-            
-            // Random High-Difficulty Spawning
-            if(frame % 45 === 0) {
-                let r = Math.random();
-                if(r < 0.4) obstacles.push({x: w, y: groundY - 30, type: 'BOMB', w: 50, h: 50});
-                else if(r < 0.7) obstacles.push({x: w, y: groundY - 180, type: 'ARROW', w: 60, h: 10});
-                else obstacles.push({x: w, y: groundY - 60, type: 'TOWER', w: 60, h: 150});
-            }
 
+            // Challenging Spawning logic
+            if(frame % 40 === 0) obstacles.push({x: w, y: groundY - 45, w: 70, h: 70});
+            if(frame % 85 === 0) arrows.push({x: w, y: groundY - 150 + Math.random()*50, w: 60, h: 8});
+
+            // Boxes
             obstacles.forEach((o, i) => {
                 o.x -= speed;
-                ctx.fillStyle = o.type === 'BOMB' ? '#000' : (o.type === 'ARROW' ? '#fff' : '#5d4037');
-                if(o.type === 'BOMB') { ctx.beginPath(); ctx.arc(o.x+25, o.y+25, 25, 0, Math.PI*2); ctx.fill(); }
-                else ctx.fillRect(o.x, o.y, o.w, o.h);
-
-                // Precise Collision
-                if(player.x + 80 > o.x && player.x < o.x + o.w && player.y + 100 > o.y && player.y < o.y + o.h) {
-                    hp -= 34; shake = 20;
-                    obstacles.splice(i, 1);
-                    hpBar.style.width = hp + '%';
-                    if(hp <= 0) { state = 'MENU'; msg.style.display = 'block'; msg.innerHTML = `<h1>WASTED</h1><p>SCORE: ${score}</p><button onclick="start()">RETRY</button>`; }
+                ctx.fillStyle = '#5d4037'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(o.x+5, o.y+5, o.w-10, o.h-10);
+                
+                if(player.x + 80 > o.x && player.x < o.x + o.w && player.y + 110 > o.y) {
+                    if(player.spin > 0) { // Destroys box if spinning
+                        obstacles.splice(i, 1); score += 5;
+                    } else {
+                        hp -= 20; shake = 15; obstacles.splice(i, 1);
+                    }
                 }
-                if(o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.25; scoreEl.innerText = score; }
+                if(o.x < -100) { obstacles.splice(i, 1); score++; speed += 0.2; }
             });
+
+            // Arrows (Faster and harder to see)
+            arrows.forEach((a, i) => {
+                a.x -= speed + 8;
+                ctx.fillStyle = '#fff'; ctx.fillRect(a.x, a.y, a.w, a.h);
+                ctx.fillStyle = '#000'; ctx.fillRect(a.x + a.w - 8, a.y - 2, 8, 12);
+
+                if(player.x + 80 > a.x && player.x < a.x + a.w && player.y + 110 > a.y && player.y < a.y + 40) {
+                    if(player.spin > 0) { 
+                        arrows.splice(i, 1); score += 10; // Deflect bonus
+                    } else {
+                        hp -= 30; shake = 25; arrows.splice(i, 1);
+                    }
+                }
+                if(a.x < -100) arrows.splice(i, 1);
+            });
+
+            hpFill.style.width = hp + '%';
+            scoreEl.innerText = score;
+
+            if(hp <= 0) {
+                state = 'MENU'; menu.style.display = 'flex';
+                menu.innerHTML = `<div class="card"><h1>GAME OVER</h1><p>SCORE: ${score}</p><button onclick="location.reload()">TRY AGAIN</button></div>`;
+            }
         }
 
-        player.draw();
+        drawRider(player.x, player.y, player.spin);
         requestAnimationFrame(loop);
     }
     loop();
