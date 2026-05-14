@@ -3,52 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Metal Sahur: Tactical Boss</title>
+    <title>Metal Sahur: Evolution</title>
     <style>
         :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; color: #fff; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #050508; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; color: #fff; }
         canvas { display: block; image-rendering: pixelated; }
         
-        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 0.9rem; z-index: 10; pointer-events: none; text-shadow: 2px 2px #000; }
-        
-        /* SHOP & BOSS UI */
-        #shop-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .shop-item { background: #1a1a1a; border: 2px solid #555; padding: 10px; margin: 5px; width: 220px; display: flex; justify-content: space-between; border-radius: 8px; font-size: 0.8rem; }
+        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 0.8rem; z-index: 10; pointer-events: none; text-shadow: 2px 2px #000; }
+        #level-alert { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); color: #ff5252; font-size: 2rem; font-weight: bold; display: none; z-index: 500; text-align: center; pointer-events: none; }
         
         #boss-ui { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); width: 220px; text-align: center; display: none; }
-        #boss-hp-bar { width: 100%; height: 10px; background: #222; border: 1px solid #fff; margin-top: 5px; }
+        #boss-hp-bar { width: 100%; height: 8px; background: #222; border: 1px solid #fff; margin-top: 5px; }
         #boss-hp-fill { width: 100%; height: 100%; background: #f00; }
 
+        #shop-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .shop-item { background: #111; border: 2px solid #444; padding: 10px; margin: 5px; width: 220px; display: flex; justify-content: space-between; border-radius: 6px; font-size: 0.8rem; }
         #shop-btn { position: absolute; top: 15px; right: 15px; background: #ffcc00; padding: 6px 12px; font-size: 0.7rem; border-radius: 4px; z-index: 20; border: none; font-weight: bold; }
 
-        /* COMPACT BUTTONS */
-        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 40px); width: 100%; display: flex; justify-content: space-between; padding: 0 25px; box-sizing: border-box; z-index: 100; }
-        .btn { width: 65px; height: 65px; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(255,255,255,0.1); color: #fff; border-radius: 10px; font-size: 0.6rem; }
+        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 30px); width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 100; }
+        .btn { width: 60px; height: 60px; border: 2px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(0,0,0,0.5); color: #fff; border-radius: 10px; font-size: 0.6rem; }
         #shootBtn { border-color: #ff5252; color: #ff5252; width: 80px; height: 80px; border-radius: 50%; font-size: 0.9rem; }
-        .btn:active { background: rgba(255,255,255,0.4); transform: scale(0.95); }
     </style>
 </head>
 <body>
 
     <div id="hud">
         <div>SCORE: <span id="score">0</span></div>
+        <div>LV: <span id="game-lv">1</span></div>
         <div>HP: <span id="hp">100</span></div>
-        <div>BOSS IN: <span id="boss-timer">60</span>s</div>
+        <div>BOSS: <span id="boss-timer">60</span>s</div>
     </div>
 
+    <div id="level-alert">DANGER LEVEL INCREASED!</div>
+
     <div id="boss-ui">
-        <div style="color:#ff5252; font-weight:bold; font-size: 0.7rem;">BOSS DETECTED</div>
+        <div style="font-weight:bold; font-size: 0.7rem;">ELITE UNIT DETECTED</div>
         <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
     </div>
 
     <button id="shop-btn" onclick="toggleShop()">SHOP</button>
 
     <div id="shop-menu">
-        <h2 style="color:#ffcc00; font-size: 1.2rem;">ARMORY</h2>
+        <h2 style="color:#ffcc00; font-size: 1.2rem;">SHOP</h2>
         <div class="shop-item"><span>FIRE RATE</span><button onclick="buy('rate')" id="b-rate">500</button></div>
         <div class="shop-item"><span>DAMAGE</span><button onclick="buy('dmg')" id="b-dmg">800</button></div>
         <div class="shop-item"><span>HEAL</span><button onclick="buy('heal')">300</button></div>
-        <button onclick="toggleShop()" style="margin-top: 20px; padding: 8px 25px; font-family: inherit;">RESUME</button>
+        <button onclick="toggleShop()" style="margin-top: 20px; padding: 8px 25px;">RESUME</button>
     </div>
 
     <div class="controls">
@@ -66,8 +66,13 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     let w, h, groundY, score = 0, hp = 100, frame = 0, seconds = 0, paused = false;
-    let enemies = [], bullets = [], px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
+    let enemies = [], bullets = [], enemyBullets = [], px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
     let boss = null, up = { rate: 1, dmg: 1, rP: 500, dP: 800 };
+    
+    // EVOLUTION STATS
+    let gameLevel = 1;
+    let enemySpeedMult = 1;
+    let enemyHPMult = 1;
 
     function resize() {
         w = canvas.width = window.innerWidth;
@@ -77,17 +82,6 @@
     window.addEventListener('resize', resize);
     resize();
 
-    function drawPlayer(x, y, dir) {
-        ctx.save();
-        ctx.translate(x + 40, y + 40);
-        if (dir === -1) ctx.scale(-1, 1);
-        ctx.fillStyle = '#8b5a2b'; ctx.fillRect(-20, -35, 40, 70); 
-        ctx.fillStyle = '#222'; ctx.fillRect(-20, -25, 40, 20); 
-        ctx.fillStyle = '#fff'; ctx.fillRect(-12, -22, 8, 8); ctx.fillRect(4, -22, 8, 8); 
-        ctx.fillStyle = up.dmg > 3 ? '#0ff' : '#555'; ctx.fillRect(10, 0, 30, 10); 
-        ctx.restore();
-    }
-
     function toggleShop() {
         paused = !paused;
         document.getElementById('shop-menu').style.display = paused ? 'flex' : 'none';
@@ -96,24 +90,43 @@
     }
 
     function buy(t) {
-        if (t === 'rate' && score >= up.rP) { score -= up.rP; up.rate++; up.rP = Math.floor(up.rP * 1.8); }
-        if (t === 'dmg' && score >= up.dP) { score -= up.dP; up.dmg++; up.dP = Math.floor(up.dP * 2.2); }
+        if (t === 'rate' && score >= up.rP) { score -= up.rP; up.rate++; up.rP = Math.floor(up.rP * 2); }
+        if (t === 'dmg' && score >= up.dP) { score -= up.dP; up.dmg++; up.dP = Math.floor(up.dP * 2); }
         if (t === 'heal' && score >= 300) { score -= 300; hp = 100; }
         toggleShop(); toggleShop();
+    }
+
+    function levelUp() {
+        gameLevel++;
+        enemySpeedMult += 0.3;
+        enemyHPMult += 0.5;
+        document.getElementById('game-lv').innerText = gameLevel;
+        const alert = document.getElementById('level-alert');
+        alert.style.display = 'block';
+        setTimeout(() => alert.style.display = 'none', 2000);
     }
 
     function update() {
         if (paused) return;
         frame++;
 
-        // Scheduled Boss Timer
         if (frame % 60 === 0) {
             seconds++;
             let timeLeft = 60 - (seconds % 60);
             document.getElementById('boss-timer').innerText = timeLeft;
-            if (seconds > 0 && seconds % 60 === 0 && !boss) {
-                boss = { x: w, y: groundY - 140, w: 180, h: 140, hp: 50 + (seconds), max: 50 + (seconds) };
-                document.getElementById('boss-ui').style.display = 'block';
+            
+            // Every 1 minute: Level Up
+            if (seconds > 0 && seconds % 60 === 0) {
+                levelUp();
+                // Spawn Boss
+                if (!boss) {
+                    boss = { 
+                        x: w, y: groundY - 160, w: 200, h: 160, 
+                        hp: 100 * enemyHPMult, max: 100 * enemyHPMult,
+                        speed: 1 * enemySpeedMult
+                    };
+                    document.getElementById('boss-ui').style.display = 'block';
+                }
             }
         }
 
@@ -121,14 +134,20 @@
         if (py > groundY - 75) { py = groundY - 75; dy = 0; isJumping = false; }
         px = Math.max(0, Math.min(w - 80, px));
 
-        // Spawn Enemies with different outfits (Only when no boss)
-        if (frame % 80 === 0 && !boss) {
-            const outfits = ['#2e7d32', '#1565c0', '#c62828', '#f9a825', '#6a1b9a']; 
+        // Spawn Enemies
+        if (frame % Math.max(20, 80 - (gameLevel * 5)) === 0 && !boss) {
+            const types = [
+                { color: '#2e7d32', hp: 1, speed: 5, ability: 'none' },
+                { color: '#c62828', hp: 1, speed: 7, ability: 'jump' },
+                { color: '#f9a825', hp: 2, speed: 3, ability: 'shoot' },
+                { color: '#6a1b9a', hp: 5, speed: 2, ability: 'shield' }
+            ];
+            const t = types[Math.floor(Math.random() * types.types?.length || 4)];
             enemies.push({ 
-                x: w, y: groundY - 60, w: 40, h: 60, 
-                hp: 1 + Math.floor(seconds/120), 
-                speed: 4 + Math.random()*3,
-                color: outfits[Math.floor(Math.random()*outfits.length)]
+                x: w, y: groundY - 60, w: 40, h: 60, ...t, 
+                hp: t.hp * enemyHPMult, 
+                speed: t.speed * enemySpeedMult,
+                dy: 0 
             });
         }
 
@@ -137,45 +156,79 @@
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         });
 
+        enemyBullets.forEach((eb, i) => {
+            eb.x += eb.vx; eb.y += eb.vy || 0;
+            if (eb.x < 0 || eb.x > w) enemyBullets.splice(i, 1);
+            if (eb.x > px && eb.x < px + 60 && eb.y > py && eb.y < py + 80) {
+                hp -= (5 * enemyHPMult); enemyBullets.splice(i, 1);
+            }
+        });
+
         if (boss) {
-            if (boss.x > w - 220) boss.x -= 1.5;
+            if (boss.x > w - 250) boss.x -= boss.speed;
+            if (frame % Math.max(20, 60 - gameLevel*2) === 0) {
+                enemyBullets.push({ x: boss.x, y: boss.y + 40, vx: -10 - gameLevel, vy: 0 });
+                if (gameLevel >= 2) enemyBullets.push({ x: boss.x, y: boss.y + 40, vx: -8, vy: 2 });
+                if (gameLevel >= 3) enemyBullets.push({ x: boss.x, y: boss.y + 40, vx: -8, vy: -2 });
+            }
             bullets.forEach((b, bi) => {
                 if (b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y) {
                     boss.hp -= up.dmg; bullets.splice(bi, 1);
                     document.getElementById('boss-hp-fill').style.width = (boss.hp/boss.max*100) + "%";
-                    if (boss.hp <= 0) { boss = null; score += 2500; document.getElementById('boss-ui').style.display = 'none'; }
+                    if (boss.hp <= 0) { boss = null; score += 5000 * gameLevel; document.getElementById('boss-ui').style.display = 'none'; }
                 }
             });
         }
 
         enemies.forEach((en, i) => {
             en.x -= en.speed;
+            if (en.ability === 'jump' && frame % 100 === 0 && en.dy === 0) en.dy = -15 - gameLevel;
+            if (en.ability === 'shoot' && frame % Math.max(30, 120 - gameLevel*10) === 0) {
+                enemyBullets.push({ x: en.x, y: en.y + 20, vx: -6 - gameLevel });
+            }
+            if (en.dy !== 0 || en.y < groundY - 60) {
+                en.dy += 1; en.y += en.dy;
+                if (en.y > groundY - 60) { en.y = groundY - 60; en.dy = 0; }
+            }
             bullets.forEach((b, bi) => {
                 if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
                     en.hp -= up.dmg; bullets.splice(bi, 1);
-                    if (en.hp <= 0) { enemies.splice(i, 1); score += 100; }
+                    if (en.hp <= 0) { enemies.splice(i, 1); score += 100 * gameLevel; }
                 }
             });
             if (px + 40 > en.x && px < en.x + en.w && py + 60 > en.y) {
-                hp -= 0.4; if (hp <= 0) location.reload();
+                hp -= 0.5 * enemyHPMult;
             }
         });
+
         document.getElementById('score').innerText = score;
-        document.getElementById('hp').innerText = Math.floor(hp);
+        document.getElementById('hp').innerText = Math.max(0, Math.floor(hp));
+        if (hp <= 0) location.reload();
     }
 
     function draw() {
-        ctx.fillStyle = '#05050f'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, w, h);
         ctx.fillStyle = '#111'; ctx.fillRect(0, groundY, w, h - groundY);
-        drawPlayer(px, py, facing);
+        
+        ctx.save();
+        ctx.translate(px + 40, py + 40);
+        if (facing === -1) ctx.scale(-1, 1);
+        ctx.fillStyle = '#8b5a2b'; ctx.fillRect(-20, -35, 40, 70); 
+        ctx.fillStyle = '#222'; ctx.fillRect(-20, -25, 40, 20); 
+        ctx.fillStyle = '#fff'; ctx.fillRect(-12, -22, 8, 8); ctx.fillRect(4, -22, 8, 8); 
+        ctx.fillStyle = up.dmg > 3 ? '#0ff' : '#555'; ctx.fillRect(10, 0, 30, 10); 
+        ctx.restore();
+
         bullets.forEach(b => { ctx.fillStyle = '#ff0'; ctx.fillRect(b.x, b.y, 15, 5); });
+        enemyBullets.forEach(eb => { ctx.fillStyle = '#f0f'; ctx.fillRect(eb.x, eb.y, 10, 10); });
+
         enemies.forEach(en => {
             ctx.fillStyle = en.color; ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = '#222'; ctx.fillRect(en.x, en.y, en.w, 12); // Helmet detail
+            ctx.fillStyle = '#000'; ctx.fillRect(en.x, en.y, en.w, 8);
         });
         if (boss) { 
-            ctx.fillStyle = '#333'; ctx.fillRect(boss.x, boss.y, boss.w, boss.h); 
-            ctx.strokeStyle = '#f00'; ctx.lineWidth = 2; ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
+            ctx.fillStyle = '#222'; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+            ctx.strokeStyle = '#f00'; ctx.lineWidth = 3; ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
         }
     }
 
@@ -190,7 +243,7 @@
     ctrl('jumpBtn', () => { if (!isJumping) { dy = -26; isJumping = true; } });
     let lastS = 0;
     ctrl('shootBtn', () => {
-        const cd = Math.max(4, 18 - (up.rate * 2));
+        const cd = Math.max(3, 18 - (up.rate * 2));
         if (frame - lastS > cd) {
             bullets.push({ x: px + (facing === 1 ? 60 : 0), y: py + 45, v: facing * 16 });
             lastS = frame;
