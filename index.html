@@ -3,64 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Metal Sahur: Shop</title>
+    <title>Metal Sahur: Tactical</title>
     <style>
-        :root { --safe-bottom: env(safe-area-inset-bottom, 30px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #05050a; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; color: #fff; }
+        :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
+        body { margin: 0; padding: 0; overflow: hidden; background: #0a0a0f; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; color: #fff; }
         canvas { display: block; image-rendering: pixelated; }
         
-        /* UI HUD */
-        #hud { position: absolute; top: 40px; width: 100%; display: flex; justify-content: space-around; font-size: 1.2rem; z-index: 10; pointer-events: none; text-shadow: 2px 2px 0 #000; }
+        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 1rem; z-index: 10; pointer-events: none; }
         
-        /* SHOP OVERLAY */
-        #shop-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; border: 8px solid #444; }
-        .shop-item { background: #222; border: 3px solid #fff; padding: 15px; margin: 10px; width: 280px; display: flex; justify-content: space-between; align-items: center; border-radius: 10px; }
-        .shop-item button { background: #33d9b2; border: none; padding: 10px; font-weight: bold; font-family: inherit; border-radius: 5px; }
-        .shop-item button:disabled { background: #555; }
-        
-        #shop-btn { position: absolute; top: 100px; right: 20px; background: #ffcc00; color: #000; padding: 10px 20px; font-weight: bold; border-radius: 5px; z-index: 20; border: none; }
+        /* SHOP & BOSS UI */
+        #shop-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .shop-item { background: #1a1a1a; border: 2px solid #555; padding: 10px; margin: 5px; width: 250px; display: flex; justify-content: space-between; border-radius: 8px; }
+        #boss-hp-bar { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); width: 200px; height: 10px; background: #222; border: 1px solid #fff; display: none; }
+        #boss-hp-fill { width: 100%; height: 100%; background: #f00; }
 
-        /* CONTROLS */
-        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 100px); width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 100; }
-        .btn { width: 90px; height: 90px; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #111; color: #fff; border-radius: 15px; }
-        #shootBtn { border-color: #ff5252; color: #ff5252; width: 110px; height: 110px; border-radius: 50%; }
-        .btn:active { background: #333; }
+        #shop-btn { position: absolute; top: 15px; right: 15px; background: #ffcc00; padding: 8px 15px; font-size: 0.8rem; border-radius: 4px; z-index: 20; border: none; font-weight: bold; }
+
+        /* SMALLER BUTTONS */
+        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 60px); width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; }
+        .btn { width: 70px; height: 70px; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(255,255,255,0.1); color: #fff; border-radius: 10px; font-size: 0.7rem; }
+        #shootBtn { border-color: #ff5252; color: #ff5252; width: 85px; height: 85px; border-radius: 50%; font-size: 1rem; }
+        .btn:active { background: rgba(255,255,255,0.4); }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>POINTS: <span id="score">0</span></div>
+        <div>SCORE: <span id="score">0</span></div>
         <div>HP: <span id="hp">100</span></div>
     </div>
+    <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
 
-    <button id="shop-btn" onclick="toggleShop()">OPEN SHOP</button>
+    <button id="shop-btn" onclick="toggleShop()">SHOP</button>
 
     <div id="shop-menu">
-        <h1 style="color:#ffcc00; margin-bottom: 30px;">ARMORY UPGRADES</h1>
-        <div class="shop-item">
-            <div>
-                <strong>FIRE RATE</strong><br><small id="rate-lv">LV 1</small>
-            </div>
-            <button onclick="buyUpgrade('rate')" id="btn-rate">500 PTS</button>
-        </div>
-        <div class="shop-item">
-            <div>
-                <strong>BULLET DMG</strong><br><small id="dmg-lv">LV 1</small>
-            </div>
-            <button onclick="buyUpgrade('dmg')" id="btn-dmg">800 PTS</button>
-        </div>
-        <div class="shop-item">
-            <div>
-                <strong>REPAIR HP</strong><br><small>Full Heal</small>
-            </div>
-            <button onclick="buyUpgrade('heal')" id="btn-heal">300 PTS</button>
-        </div>
-        <button onclick="toggleShop()" style="margin-top: 40px; background: #fff; color:#000; padding: 10px 40px; border:none; font-weight:bold;">BACK TO BATTLE</button>
+        <h2 style="color:#ffcc00;">UPGRADES</h2>
+        <div class="shop-item"><span>FIRE RATE</span><button onclick="buy('rate')" id="b-rate">500</button></div>
+        <div class="shop-item"><span>DAMAGE</span><button onclick="buy('dmg')" id="b-dmg">800</button></div>
+        <div class="shop-item"><span>HEAL</span><button onclick="buy('heal')">300</button></div>
+        <button onclick="toggleShop()" style="margin-top: 20px; padding: 10px 30px;">CLOSE</button>
     </div>
 
-    <div class="controls" id="game-ui">
-        <div style="display:flex; gap:15px;">
+    <div class="controls">
+        <div style="display:flex; gap:10px;">
             <div class="btn" id="lBtn">LEFT</div>
             <div class="btn" id="rBtn">RIGHT</div>
         </div>
@@ -73,89 +58,65 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-
     let w, h, groundY, score = 0, hp = 100, frame = 0, paused = false;
     let enemies = [], bullets = [], px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
-    
-    // UPGRADE STATS
-    let up = {
-        rate: 1, // Fire every X frames
-        dmg: 1,  // Damage per hit
-        ratePrice: 500,
-        dmgPrice: 800
-    };
+    let boss = null, up = { rate: 1, dmg: 1, rP: 500, dP: 800 };
 
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h * 0.8;
+        groundY = h * 0.85;
     }
     window.addEventListener('resize', resize);
     resize();
 
     function drawPlayer(x, y, dir) {
         ctx.save();
-        ctx.translate(x + 50, y + 50);
+        ctx.translate(x + 40, y + 40);
         if (dir === -1) ctx.scale(-1, 1);
-        
-        // Body
-        ctx.fillStyle = '#8b5a2b'; ctx.fillRect(-25, -45, 50, 90); 
-        ctx.fillStyle = '#222'; ctx.fillRect(-25, -35, 50, 25); // Mask
-        ctx.fillStyle = '#fff'; ctx.fillRect(-18, -30, 12, 12); ctx.fillRect(6, -30, 12, 12); // Eyes
-        
-        // Weapon evolution visual
-        let gunColor = up.dmg > 3 ? '#34e7e4' : '#555';
-        let gunSize = 30 + (up.dmg * 5);
-        ctx.fillStyle = gunColor; 
-        ctx.fillRect(15, 0, gunSize, 15); // Barrel
-        ctx.fillStyle = '#111'; ctx.fillRect(15, 10, 8, 15); // Grip
+        ctx.fillStyle = '#8b5a2b'; ctx.fillRect(-20, -35, 40, 70); // Body
+        ctx.fillStyle = '#222'; ctx.fillRect(-20, -25, 40, 20); // Mask
+        ctx.fillStyle = '#fff'; ctx.fillRect(-12, -22, 8, 8); ctx.fillRect(4, -22, 8, 8); // Eyes
+        ctx.fillStyle = up.dmg > 3 ? '#0ff' : '#555'; ctx.fillRect(10, 0, 30, 10); // Gun
         ctx.restore();
     }
 
     function toggleShop() {
         paused = !paused;
         document.getElementById('shop-menu').style.display = paused ? 'flex' : 'none';
-        updateShopUI();
+        document.getElementById('b-rate').innerText = up.rP;
+        document.getElementById('b-dmg').innerText = up.dP;
     }
 
-    function updateShopUI() {
-        document.getElementById('rate-lv').innerText = "LV " + up.rate;
-        document.getElementById('dmg-lv').innerText = "LV " + up.dmg;
-        document.getElementById('btn-rate').innerText = up.ratePrice + " PTS";
-        document.getElementById('btn-dmg').innerText = up.dmgPrice + " PTS";
-        document.getElementById('btn-rate').disabled = score < up.ratePrice;
-        document.getElementById('btn-dmg').disabled = score < up.dmgPrice;
-        document.getElementById('btn-heal').disabled = score < 300 || hp >= 100;
-    }
-
-    function buyUpgrade(type) {
-        if (type === 'rate' && score >= up.ratePrice) {
-            score -= up.ratePrice;
-            up.rate++;
-            up.ratePrice = Math.floor(up.ratePrice * 1.8);
-        } else if (type === 'dmg' && score >= up.dmgPrice) {
-            score -= up.dmgPrice;
-            up.dmg++;
-            up.dmgPrice = Math.floor(up.dmgPrice * 2);
-        } else if (type === 'heal' && score >= 300) {
-            score -= 300;
-            hp = 100;
-        }
-        updateShopUI();
-        document.getElementById('score').innerText = score;
-        document.getElementById('hp').innerText = Math.floor(hp);
+    function buy(t) {
+        if (t === 'rate' && score >= up.rP) { score -= up.rP; up.rate++; up.rP *= 2; }
+        if (t === 'dmg' && score >= up.dP) { score -= up.dP; up.dmg++; up.dP *= 2; }
+        if (t === 'heal' && score >= 300) { score -= 300; hp = 100; }
+        toggleShop(); toggleShop(); // Refresh UI
     }
 
     function update() {
         if (paused) return;
         frame++;
-        dy += 1.4; py += dy; px += dx;
-        if (py > groundY - 100) { py = groundY - 100; dy = 0; isJumping = false; }
-        px = Math.max(0, Math.min(w - 100, px));
+        dy += 1.5; py += dy; px += dx;
+        if (py > groundY - 75) { py = groundY - 75; dy = 0; isJumping = false; }
+        px = Math.max(0, Math.min(w - 80, px));
 
-        // Spawn logic
-        if (frame % 60 === 0) {
-            enemies.push({ x: w, y: groundY - 80, w: 50, h: 80, hp: 1 + Math.floor(frame/1000), speed: 4 + Math.random()*3 });
+        // Boss Trigger
+        if (score > 0 && score % 5000 === 0 && !boss) {
+            boss = { x: w, y: groundY - 150, w: 180, h: 150, hp: 50, max: 50 };
+            document.getElementById('boss-hp-bar').style.display = 'block';
+        }
+
+        // Spawn different outfits
+        if (frame % 80 === 0 && !boss) {
+            const colors = ['#2e7d32', '#1565c0', '#c62828', '#f9a825']; // Green, Blue, Red, Yellow
+            enemies.push({ 
+                x: w, y: groundY - 60, w: 40, h: 60, 
+                hp: 1 + Math.floor(score/2000), 
+                speed: 4 + Math.random()*3,
+                color: colors[Math.floor(Math.random()*colors.length)]
+            });
         }
 
         bullets.forEach((b, i) => {
@@ -163,18 +124,27 @@
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         });
 
+        if (boss) {
+            boss.x -= 1;
+            bullets.forEach((b, bi) => {
+                if (b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y) {
+                    boss.hp -= up.dmg; bullets.splice(bi, 1);
+                    document.getElementById('boss-hp-fill').style.width = (boss.hp/boss.max*100) + "%";
+                    if (boss.hp <= 0) { boss = null; score += 2000; document.getElementById('boss-hp-bar').style.display = 'none'; }
+                }
+            });
+        }
+
         enemies.forEach((en, i) => {
             en.x -= en.speed;
             bullets.forEach((b, bi) => {
                 if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
-                    en.hp -= up.dmg; 
-                    bullets.splice(bi, 1);
+                    en.hp -= up.dmg; bullets.splice(bi, 1);
                     if (en.hp <= 0) { enemies.splice(i, 1); score += 100; }
                 }
             });
-            if (px + 40 > en.x && px < en.x + en.w && py + 80 > en.y) {
-                hp -= 0.5;
-                if (hp <= 0) location.reload();
+            if (px + 40 > en.x && px < en.x + en.w && py + 60 > en.y) {
+                hp -= 0.5; if (hp <= 0) location.reload();
             }
         });
         document.getElementById('score').innerText = score;
@@ -182,43 +152,33 @@
     }
 
     function draw() {
-        ctx.fillStyle = '#05050a'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#05050f'; ctx.fillRect(0, 0, w, h);
         ctx.fillStyle = '#111'; ctx.fillRect(0, groundY, w, h - groundY);
-        
         drawPlayer(px, py, facing);
-        
-        bullets.forEach(b => {
-            ctx.fillStyle = up.dmg > 3 ? '#0ff' : '#ff0';
-            ctx.fillRect(b.x, b.y, 20, 6);
-        });
-
+        bullets.forEach(b => { ctx.fillStyle = '#ff0'; ctx.fillRect(b.x, b.y, 15, 5); });
         enemies.forEach(en => {
-            ctx.fillStyle = '#c0392b'; ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = '#000'; ctx.fillRect(en.x + 10, en.y + 15, 10, 10);
+            ctx.fillStyle = en.color; ctx.fillRect(en.x, en.y, en.w, en.h); // Outfit
+            ctx.fillStyle = '#000'; ctx.fillRect(en.x, en.y, en.w, 15); // Helmet
         });
+        if (boss) { ctx.fillStyle = '#444'; ctx.fillRect(boss.x, boss.y, boss.w, boss.h); }
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
-
-    const input = (id, s, e) => {
+    const ctrl = (id, s, e) => {
         const el = document.getElementById(id);
         el.addEventListener('touchstart', (ev) => { ev.preventDefault(); s(); });
         if(e) el.addEventListener('touchend', (ev) => { ev.preventDefault(); e(); });
     };
-
-    input('lBtn', () => { dx = -8; facing = -1; }, () => { dx = 0; });
-    input('rBtn', () => { dx = 8; facing = 1; }, () => { dx = 0; });
-    input('jumpBtn', () => { if (!isJumping) { dy = -26; isJumping = true; } });
-    
-    let lastShoot = 0;
-    input('shootBtn', () => {
-        const cooldown = Math.max(5, 20 - (up.rate * 2));
-        if (frame - lastShoot > cooldown) {
-            bullets.push({ x: px + (facing === 1 ? 80 : 0), y: py + 55, v: facing * 18 });
-            lastShoot = frame;
+    ctrl('lBtn', () => { dx = -7; facing = -1; }, () => { dx = 0; });
+    ctrl('rBtn', () => { dx = 7; facing = 1; }, () => { dx = 0; });
+    ctrl('jumpBtn', () => { if (!isJumping) { dy = -25; isJumping = true; } });
+    let lastS = 0;
+    ctrl('shootBtn', () => {
+        if (frame - lastS > Math.max(5, 15-up.rate)) {
+            bullets.push({ x: px + (facing === 1 ? 60 : 0), y: py + 45, v: facing * 15 });
+            lastS = frame;
         }
     });
-
     loop();
 </script>
 </body>
