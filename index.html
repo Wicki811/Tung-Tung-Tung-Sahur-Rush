@@ -3,74 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tung Tung Tung Sahur: Max Level</title>
+    <title>Store Defense: Grand Opening</title>
     <style>
         :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #ffbc0d; touch-action: none; -webkit-user-select: none; font-family: 'Arial Black', sans-serif; }
-        canvas { display: block; image-rendering: pixelated; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #b71c1c; touch-action: none; -webkit-user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; image-rendering: auto; }
         
-        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 0.9rem; z-index: 10; pointer-events: none; color: #da291c; text-shadow: 1px 1px #fff; }
-        #wave-ui { position: absolute; top: 60px; width: 100%; text-align: center; font-size: 1.2rem; color: #da291c; font-weight: bold; }
+        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 1.1rem; z-index: 10; pointer-events: none; color: #fff; text-shadow: 2px 2px #000; font-weight: bold; }
+        #wave-ui { position: absolute; top: 60px; width: 100%; text-align: center; font-size: 1.4rem; color: #ffeb3b; font-weight: bold; text-shadow: 2px 2px #000; }
         
-        #shop-menu { position: absolute; inset: 0; background: rgba(255,255,255,0.98); z-index: 1000; display: none; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; }
-        .shop-section { width: 90%; max-width: 420px; margin-bottom: 15px; border: 4px solid #da291c; padding: 12px; background: #fff; border-radius: 15px; }
-        .shop-item { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; font-weight: bold; color: #da291c; font-size: 0.85rem; }
-        .shop-item button { background: #ffbc0d; color: #da291c; border: 2px solid #da291c; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
+        #shop-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; padding: 20px; color: white; }
+        .shop-section { width: 90%; max-width: 400px; margin-bottom: 15px; border: 2px solid #fff; padding: 15px; background: #333; border-radius: 10px; }
+        .shop-item { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+        .shop-item button { background: #4caf50; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         
-        #shop-btn { position: absolute; top: 15px; right: 15px; background: #da291c; color: #ffbc0d; padding: 10px 15px; border-radius: 10px; z-index: 20; border: 3px solid #fff; font-weight: bold; }
-        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 30px); width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; }
-        .move-group { display: flex; gap: 10px; }
-        .btn { width: 70px; height: 70px; border: 5px solid #da291c; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #fff; color: #da291c; border-radius: 15px; font-size: 0.75rem; }
-        #shootBtn { width: 90px; height: 90px; border-radius: 50%; background: #da291c; color: #ffbc0d; }
+        #shop-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #b71c1c; padding: 10px 20px; border-radius: 5px; z-index: 20; border: none; font-weight: bold; }
+        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 20px); width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
+        .btn { width: 70px; height: 70px; background: rgba(255,255,255,0.2); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        #shootBtn { width: 90px; height: 90px; background: rgba(255,255,255,0.4); border: 3px solid #ffeb3b; }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>$ <span id="score">0</span></div>
+        <div>SALES: $<span id="score">0</span></div>
         <div>LV: <span id="player-lv">1</span></div>
-        <div>ARMOR: <span id="armor">0</span></div>
         <div>HP: <span id="hp">100</span></div>
     </div>
 
     <div id="wave-ui">WAVE <span id="wave-num">1</span></div>
 
-    <button id="shop-btn" onclick="toggleShop()">SHOP</button>
+    <button id="shop-btn" onclick="toggleShop()">UPGRADES</button>
 
     <div id="shop-menu">
-        <h1 style="color:#da291c; margin-bottom:10px;">SAHUR ARMORY</h1>
-        
-        <div class="shop-section" style="background:#fff3d4">
-            <h3 style="margin:0; color:#da291c">TRAINING</h3>
-            <div class="shop-item">
-                <div>LEVEL UP<br><small style="color:#666">+Speed, +Armor Cap</small></div>
-                <button onclick="levelUp()" id="lvlBtn">$2000</button>
-            </div>
-        </div>
-
+        <h1>STORE UPGRADES</h1>
         <div class="shop-section">
-            <h3 style="margin:0; color:#da291c">WEAPONS</h3>
-            <div class="shop-item"><span>SMG</span><button onclick="buyWeapon(1)" id="w1">$1500</button></div>
-            <div class="shop-item"><span>MINIGUN</span><button onclick="buyWeapon(2)" id="w2">$5000</button></div>
-            <div class="shop-item"><span>SAHUR'S STICK (NUKE)</span><button onclick="buyWeapon(3)" id="w3">$25000</button></div>
+            <div class="shop-item"><span>PROMOTION (LV UP)</span><button onclick="levelUp()" id="lvlBtn">$1000</button></div>
+            <div class="shop-item"><span>CHICKEN BLASTER</span><button onclick="buyWeapon(1)" id="w1">$1500</button></div>
+            <div class="shop-item"><span>GRAVY CANNON</span><button onclick="buyWeapon(2)" id="w2">$5000</button></div>
         </div>
-
         <div class="shop-section">
-            <h3 style="margin:0; color:#da291c">CONSUMABLES</h3>
-            <div class="shop-item"><span>FRENCH FRIES (HEAL)</span><button onclick="buyHeal()">$600</button></div>
-            <div class="shop-item"><span>REFILL ARMOR</span><button onclick="buyArmor()">$1200</button></div>
+            <div class="shop-item"><span>FRENCH FRIES (HEAL)</span><button onclick="buyHeal()">$400</button></div>
         </div>
-        
-        <button onclick="toggleShop()" style="padding: 12px 50px; background: #da291c; color: #fff; border:none; border-radius:15px; font-weight:bold;">RESUME</button>
+        <button onclick="toggleShop()" style="margin-top: 20px; padding: 15px 40px;">RESUME DEFENSE</button>
     </div>
 
     <div class="controls">
-        <div class="move-group">
+        <div style="display: flex; gap: 10px;">
             <div class="btn" id="lBtn">LEFT</div>
             <div class="btn" id="jumpBtn">JUMP</div>
             <div class="btn" id="rBtn">RIGHT</div>
         </div>
-        <div class="btn" id="shootBtn">STRIKE</div>
+        <div class="btn" id="shootBtn">FIRE</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -78,24 +62,22 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    let w, h, groundY, score = 0, hp = 100, armor = 0, frame = 0, paused = false;
-    let enemies = [], bullets = [], enemyBullets = [], wave = 1, enemiesToSpawn = 10;
-    let px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false, shootHeat = 0;
-    let pLevel = 1, pSpeed = 10, pJump = -30, pLvlCost = 2000;
-    let boss = null;
+    let w, h, groundY, score = 0, hp = 100, frame = 0, paused = false;
+    let enemies = [], bullets = [], wave = 1, enemiesToSpawn = 8;
+    let px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
+    let pLevel = 1, pSpeed = 8, pLvlCost = 1000, activeWep = 0;
 
     const weapons = [
-        { name: 'Pistol', dmg: 6, heat: 18, size: 10, owned: true },
-        { name: 'SMG', dmg: 5, heat: 9, size: 8, owned: false },
-        { name: 'Minigun', dmg: 4, heat: 2.5, size: 6, owned: false },
-        { name: 'Sahur Stick', dmg: 9999, heat: 0, size: 70, owned: false }
+        { name: 'Basic', dmg: 10, speed: 15, size: 8, color: '#fff' },
+        { name: 'Blaster', dmg: 18, speed: 20, size: 10, color: '#ffeb3b' },
+        { name: 'Cannon', dmg: 50, speed: 12, size: 25, color: '#795548' }
     ];
-    let activeWep = 0;
+    let ownedWeapons = [true, false, false];
 
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h * 0.8;
+        groundY = h * 0.85;
     }
     window.addEventListener('resize', resize);
     resize();
@@ -104,149 +86,120 @@
     
     function levelUp() {
         if (score >= pLvlCost) {
-            score -= pLvlCost;
-            pLevel++;
-            pSpeed += 1.5;
-            pJump -= 1;
-            pLvlCost = Math.floor(pLvlCost * 2.2);
+            score -= pLvlCost; pLevel++; pSpeed += 1; pLvlCost *= 2;
             document.getElementById('player-lv').innerText = pLevel;
             document.getElementById('lvlBtn').innerText = "$" + pLvlCost;
         }
     }
 
     function buyWeapon(idx) {
-        const prices = [0, 1500, 5000, 25000];
-        if (!weapons[idx].owned && score >= prices[idx]) {
-            score -= prices[idx]; weapons[idx].owned = true;
-            document.getElementById('w'+idx).innerText = "EQUIP";
+        const prices = [0, 1500, 5000];
+        if (score >= prices[idx] && !ownedWeapons[idx]) {
+            score -= prices[idx]; ownedWeapons[idx] = true;
             activeWep = idx;
-        } else if (weapons[idx].owned) activeWep = idx;
+        } else if (ownedWeapons[idx]) activeWep = idx;
     }
-    
-    function buyArmor() { if(score >= 1200) { score -= 1200; armor += (100 + pLevel*20); } }
-    function buyHeal() { if(score >= 600) { score -= 600; hp = 100; } }
 
-    function takeDamage(amt) {
-        if (armor > 0) { armor -= amt; if (armor < 0) { hp += armor; armor = 0; } }
-        else hp -= amt;
-    }
+    function buyHeal() { if (score >= 400) { score -= 400; hp = 100; } }
 
     function update() {
         if (paused) return;
         frame++;
-        shootHeat = Math.max(0, shootHeat - (2 + pLevel * 0.1));
 
-        if (enemiesToSpawn > 0 && frame % Math.max(15, 60 - wave*5) === 0 && !boss) {
-            enemies.push({ 
-                x: w, y: groundY-80, w:50, h:80, 
-                hp: 15 + (wave*15), 
-                speed: 4 + (wave*1.2), 
-                type: Math.random() > 0.5 ? 'elite' : 'grunt' 
-            });
+        // Physics
+        dy += 1.2; py += dy; px += dx;
+        if (py > groundY - 70) { py = groundY - 70; dy = 0; isJumping = false; }
+        px = Math.max(0, Math.min(w - 50, px));
+
+        // Spawning
+        if (enemiesToSpawn > 0 && frame % 100 === 0) {
+            enemies.push({ x: w, y: groundY - 80, w: 50, h: 80, hp: 30 + wave * 10, speed: 2 + Math.random() * 2 });
             enemiesToSpawn--;
         }
 
-        if (enemiesToSpawn === 0 && enemies.length === 0 && !boss) {
-            boss = { x: w, y: groundY - 220, w: 220, h: 220, hp: 1500 * wave, max: 1500 * wave };
-        }
-
-        dy += 1.6; py += dy; px += dx;
-        if (py > groundY - 80) { py = groundY - 80; dy = 0; isJumping = false; }
-        px = Math.max(0, Math.min(w - 80, px));
-
-        for(let i = bullets.length-1; i>=0; i--) {
-            let b = bullets[i]; b.x += b.v;
-            if (boss && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y) {
-                boss.hp -= b.dmg; if(activeWep !== 3) bullets.splice(i, 1);
-                if (boss.hp <= 0) { 
-                    boss = null; score += 5000; wave++; enemiesToSpawn = 12 + (wave*4); 
-                    document.getElementById('wave-num').innerText = wave;
-                }
-                continue;
-            }
+        // Bullets
+        bullets.forEach((b, i) => {
+            b.x += b.v;
             enemies.forEach((en, j) => {
-                if (b.x > en.x && b.x < en.x+en.w && b.y > en.y) {
-                    en.hp -= b.dmg; if(activeWep !== 3) bullets.splice(i, 1);
-                    if (en.hp <= 0) { enemies.splice(j, 1); score += 400; }
+                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                    en.hp -= b.dmg;
+                    bullets.splice(i, 1);
+                    if (en.hp <= 0) { enemies.splice(j, 1); score += 200; }
                 }
             });
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
-        }
-
-        if (boss) {
-            if (boss.x > w - 260) boss.x -= 4;
-            if (frame % 40 === 0) enemyBullets.push({ x: boss.x, y: boss.y + 100, vx: -16, vy: 0, size: 28 });
-        }
-
-        enemyBullets.forEach((eb, i) => {
-            eb.x += eb.vx;
-            if (eb.x > px && eb.x < px + 60 && eb.y > py && eb.y < py + 80) {
-                takeDamage(20 + wave*2); enemyBullets.splice(i, 1);
-            }
-            if (eb.x < -100) enemyBullets.splice(i, 1);
         });
 
-        enemies.forEach(en => {
+        // Enemies
+        enemies.forEach((en, i) => {
             en.x -= en.speed;
-            if (en.type === 'elite' && frame % 70 === 0) enemyBullets.push({ x: en.x, y: en.y + 30, vx: -12, vy: 0, size: 14 });
-            if (px+45 > en.x && px < en.x+en.w && py+75 > en.y) takeDamage(5 + wave*3);
+            if (en.x < px + 40 && en.x + en.w > px && py + 70 > en.y) {
+                hp -= 0.5;
+            }
+            if (en.x < -50) { enemies.splice(i, 1); hp -= 10; }
         });
 
-        if (hp <= 0) { alert("GAME OVER! Wave: " + wave); location.reload(); }
+        // Wave reset
+        if (enemiesToSpawn === 0 && enemies.length === 0) {
+            wave++;
+            enemiesToSpawn = 8 + wave * 2;
+            document.getElementById('wave-num').innerText = wave;
+        }
+
+        if (hp <= 0) location.reload();
         document.getElementById('score').innerText = score;
-        document.getElementById('hp').innerText = Math.max(0, Math.floor(hp));
-        document.getElementById('armor').innerText = Math.floor(armor);
+        document.getElementById('hp').innerText = Math.floor(hp);
     }
 
     function draw() {
-        ctx.fillStyle = '#ffbc0d'; ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = '#da291c'; ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.clearRect(0,0,w,h);
         
-        // Player
-        ctx.save(); ctx.translate(px+40, py+40); if(facing === -1) ctx.scale(-1, 1);
-        ctx.fillStyle = '#333'; ctx.fillRect(-20, -35, 40, 70);
-        ctx.fillStyle = '#fff'; ctx.fillRect(-10, -50, 20, 15);
-        ctx.fillStyle = '#da291c'; ctx.beginPath(); ctx.arc(15, 10, 15, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#000'; ctx.fillRect(10, 10, 30, 8); 
-        ctx.restore();
+        // Floor
+        ctx.fillStyle = '#424242';
+        ctx.fillRect(0, groundY, w, h - groundY);
 
-        bullets.forEach(b => { 
-            ctx.fillStyle = activeWep === 3 ? '#ffff00' : '#ffffff'; 
-            ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill();
-        });
+        // Player (Store Worker)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px, py, 40, 70); // Shirt
+        ctx.fillStyle = '#d32f2f';
+        ctx.fillRect(px, py, 40, 10); // Red Cap
+        ctx.fillStyle = '#000';
+        ctx.fillRect(px + (facing === 1 ? 30 : 0), py + 30, 20, 10); // Spatula/Weapon
 
-        enemyBullets.forEach(eb => { 
-            ctx.fillStyle = '#da291c'; ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.size, 0, Math.PI*2); ctx.fill(); 
-        });
-
+        // Enemies (Crowd)
         enemies.forEach(en => {
-            ctx.fillStyle = en.type === 'elite' ? '#000' : '#444';
+            ctx.fillStyle = '#1565c0';
             ctx.fillRect(en.x, en.y, en.w, en.h);
+            ctx.fillStyle = '#ff0000'; // Health bar
+            ctx.fillRect(en.x, en.y - 10, en.w * (en.hp/(30 + wave * 10)), 5);
         });
 
-        if (boss) {
-            ctx.fillStyle = '#222'; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
-            ctx.fillStyle = '#ffbc0d'; ctx.font = "bold 50px Arial"; ctx.fillText("M", boss.x + 85, boss.y + 130);
-            ctx.fillStyle = '#da291c'; ctx.fillRect(boss.x, boss.y - 30, (boss.hp/boss.max)*boss.w, 15);
-        }
+        // Bullets
+        bullets.forEach(b => {
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.size, 0, Math.PI*2);
+            ctx.fill();
+        });
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+    // Input
     const ctrl = (id, s, e) => {
         const el = document.getElementById(id);
         el.addEventListener('touchstart', (ev) => { ev.preventDefault(); s(); });
         if(e) el.addEventListener('touchend', (ev) => { ev.preventDefault(); e(); });
     };
-    ctrl('lBtn', () => { dx = -pSpeed; facing = -1; }, () => { dx = 0; });
-    ctrl('rBtn', () => { dx = pSpeed; facing = 1; }, () => { dx = 0; });
-    ctrl('jumpBtn', () => { if (!isJumping) { dy = pJump; isJumping = true; } });
+
+    ctrl('lBtn', () => { dx = -pSpeed; facing = -1; }, () => dx = 0);
+    ctrl('rBtn', () => { dx = pSpeed; facing = 1; }, () => dx = 0);
+    ctrl('jumpBtn', () => { if(!isJumping) { dy = -22; isJumping = true; } });
     ctrl('shootBtn', () => {
         const wp = weapons[activeWep];
-        if (shootHeat < 95 || activeWep === 3) {
-            bullets.push({ x: px+(facing===1?70:10), y: py+45, v: facing*22, dmg: wp.dmg, size: wp.size });
-            shootHeat += wp.heat;
-        }
+        bullets.push({ x: px + 20, y: py + 35, v: facing * wp.speed, dmg: wp.dmg, size: wp.size, color: wp.color });
     });
+
     loop();
 </script>
 </body>
