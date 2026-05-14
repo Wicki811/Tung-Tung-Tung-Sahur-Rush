@@ -3,32 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Tung Tung: Metal Sahur</title>
+    <title>Metal Sahur - Fix</title>
     <style>
         :root { --safe-bottom: env(safe-area-inset-bottom, 30px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', Courier, monospace; color: #fff; }
-        
+        body { margin: 0; padding: 0; overflow: hidden; background: #000; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', Courier, monospace; }
         canvas { display: block; image-rendering: pixelated; }
-
-        #hud { position: absolute; top: 40px; width: 100%; display: flex; justify-content: space-around; font-size: 1.5rem; text-shadow: 3px 3px 0 #000; z-index: 10; pointer-events: none; }
-        #mission { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; color: #ffcc00; display: none; z-index: 1000; text-shadow: 5px 5px 0 #000; }
-
-        /* iPAD CONTROLS: Metal Slug Arcade Style */
+        
+        /* UI HUD */
+        #hud { position: absolute; top: 40px; width: 100%; display: flex; justify-content: space-around; color: #0f0; font-size: 1.5rem; text-shadow: 2px 2px 0 #000; z-index: 10; pointer-events: none; }
+        
+        /* CONTROLS - Positioned for iPad Thumbs */
         .controls { position: absolute; bottom: calc(var(--safe-bottom) + 100px); width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 100; }
-        .dir-pad { display: flex; gap: 20px; }
-        .btn { width: 100px; height: 100px; border: 6px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #333; box-shadow: 6px 6px 0 #000; }
-        #jumpBtn { border-color: #00ff00; background: rgba(0, 255, 0, 0.2); }
-        #shootBtn { border-color: #ff0000; background: rgba(255, 0, 0, 0.2); width: 120px; height: 120px; }
-        .btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 #000; }
+        .dir-pad { display: flex; gap: 15px; }
+        .btn { width: 90px; height: 90px; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #222; color: #fff; box-shadow: 4px 4px 0 #555; border-radius: 10px; }
+        #jumpBtn { border-color: #0ff; color: #0ff; }
+        #shootBtn { border-color: #f00; color: #f00; width: 110px; height: 110px; font-size: 1.2rem; }
+        .btn:active { transform: translate(2px, 2px); box-shadow: none; background: #444; }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>AMMO: <span id="ammo">∞</span></div>
         <div>SCORE: <span id="score">0</span></div>
+        <div>HP: <span id="hp">3</span></div>
     </div>
-    <div id="mission">MISSION START!</div>
 
     <div class="controls">
         <div class="dir-pad">
@@ -36,7 +34,7 @@
             <div class="btn" id="rBtn">RIGHT</div>
         </div>
         <div class="btn" id="jumpBtn">JUMP</div>
-        <div class="btn" id="shootBtn">FIRE!</div>
+        <div class="btn" id="shootBtn">FIRE</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -44,11 +42,10 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const charImg = new Image();
-    charImg.src = 'image.png';
 
-    let w, h, groundY, score = 0, frame = 0, active = true;
-    let enemies = [], bullets = [], particles = [];
+    let w, h, groundY, score = 0, hp = 3, frame = 0;
+    let enemies = [], bullets = [], playerX = 100, playerY = 0, dy = 0, dx = 0;
+    let facing = 1, isJumping = false;
 
     function resize() {
         w = canvas.width = window.innerWidth;
@@ -58,112 +55,122 @@
     window.addEventListener('resize', resize);
     resize();
 
-    const player = {
-        x: 100, y: 0, dy: 0, dx: 0, w: 120, h: 120, jumping: false, facing: 1,
-        update() {
-            this.dy += 1.2; // Gravity
-            this.y += this.dy;
-            this.x += this.dx;
+    // DRAW PIXEL TUNG TUNG (Since PNG might be blocked)
+    function drawPlayer(x, y, dir) {
+        ctx.save();
+        ctx.translate(x + 60, y + 60);
+        if (dir === -1) ctx.scale(-1, 1);
+        
+        // Body (The Log Shape)
+        ctx.fillStyle = '#d2b48c';
+        ctx.fillRect(-30, -50, 60, 100);
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
+        ctx.strokeRect(-30, -50, 60, 100);
+        
+        // Eyes (Classic Stare)
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-20, -35, 15, 15); ctx.fillRect(5, -35, 15, 15);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-15, -30, 6, 6); ctx.fillRect(10, -30, 6, 6);
 
-            if (this.y > groundY - 110) {
-                this.y = groundY - 110;
-                this.dy = 0;
-                this.jumping = false;
-            }
-            // Screen boundaries
-            if (this.x < 0) this.x = 0;
-            if (this.x > w - this.w) this.x = w - this.w;
-        },
-        draw() {
-            ctx.save();
-            if (this.facing === -1) {
-                ctx.scale(-1, 1);
-                ctx.drawImage(charImg, -this.x - this.w, this.y, this.w, this.h);
-            } else {
-                ctx.drawImage(charImg, this.x, this.y, this.w, this.h);
-            }
-            ctx.restore();
-        }
-    };
-
-    function shoot() {
-        bullets.push({ x: player.x + (player.facing === 1 ? 100 : 0), y: player.y + 60, vx: player.facing * 15 });
+        // Gun
+        ctx.fillStyle = '#555';
+        ctx.fillRect(20, 0, 30, 10);
+        
+        ctx.restore();
     }
 
     function spawnEnemy() {
-        if (frame % 90 === 0) {
-            enemies.push({ x: w, y: groundY - 80, w: 60, h: 80, hp: 2 });
+        if (frame % 100 === 0) {
+            enemies.push({ x: w, y: groundY - 80, w: 50, h: 80, speed: 3 + Math.random() * 2 });
         }
     }
 
-    function loop() {
-        if (!active) return;
+    function update() {
         frame++;
-        ctx.clearRect(0, 0, w, h);
+        dy += 1.2; // Gravity
+        playerY += dy;
+        playerX += dx;
 
-        // BG: Gritty Pixel City
-        ctx.fillStyle = '#222'; ctx.fillRect(0,0,w,h);
-        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY, w, h-groundY);
-        ctx.fillStyle = '#fff'; // Distant stars
-        for(let i=0; i<10; i++) ctx.fillRect((i*200 - frame)%w, 50 + (i*20), 4, 4);
+        if (playerY > groundY - 110) {
+            playerY = groundY - 110;
+            dy = 0;
+            isJumping = false;
+        }
+        if (playerX < 0) playerX = 0;
+        if (playerX > w - 120) playerX = w - 120;
 
-        player.update();
-        player.draw();
-        spawnEnemy();
-
-        // Bullets
+        // Update Bullets
         bullets.forEach((b, i) => {
-            b.x += b.vx;
-            ctx.fillStyle = '#ffff00'; ctx.fillRect(b.x, b.y, 20, 6);
+            b.x += b.v;
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         });
 
-        // Enemies
+        // Update Enemies
         enemies.forEach((en, i) => {
-            en.x -= 4;
-            // Enemy Body
-            ctx.fillStyle = '#5d6d7e'; ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = '#ff0000'; ctx.fillRect(en.x + 10, en.y + 10, 10, 10); // Evil Eye
-
-            // Bullet vs Enemy
+            en.x -= en.speed;
+            
+            // Bullet Collision
             bullets.forEach((b, bi) => {
-                if (b.x < en.x + en.w && b.x + 20 > en.x && b.y < en.y + en.h && b.y + 6 > en.y) {
-                    en.hp--;
+                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                    enemies.splice(i, 1);
                     bullets.splice(bi, 1);
-                    if (en.hp <= 0) {
-                        enemies.splice(i, 1);
-                        score += 100;
-                        document.getElementById('score').innerText = score;
-                    }
+                    score += 100;
+                    document.getElementById('score').innerText = score;
                 }
             });
 
-            // Player vs Enemy
-            if (player.x + 80 > en.x && player.x < en.x + en.w && player.y + 80 > en.y && player.y < en.y + en.h) {
-                location.reload(); // Game Over
+            // Player Collision
+            if (playerX + 40 > en.x && playerX < en.x + en.w && playerY + 100 > en.y) {
+                enemies.splice(i, 1);
+                hp--;
+                document.getElementById('hp').innerText = hp;
+                if (hp <= 0) location.reload();
             }
         });
+    }
 
+    function draw() {
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, w, h); // BG
+        ctx.fillStyle = '#333'; ctx.fillRect(0, groundY, w, h - groundY); // Floor
+        ctx.strokeStyle = '#0f0'; ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(w, groundY); ctx.stroke();
+
+        drawPlayer(playerX, playerY, facing);
+
+        bullets.forEach(b => {
+            ctx.fillStyle = '#ff0';
+            ctx.fillRect(b.x, b.y, 15, 5);
+        });
+
+        enemies.forEach(en => {
+            ctx.fillStyle = '#8b0000'; // Dark Red Soldier
+            ctx.fillRect(en.x, en.y, en.w, en.h);
+            ctx.fillStyle = '#fff'; ctx.fillRect(en.x + 10, en.y + 10, 8, 8); // Eye
+        });
+    }
+
+    function loop() {
+        update();
+        draw();
+        spawnEnemy();
         requestAnimationFrame(loop);
     }
 
-    // iPad ARCADE CONTROLS
-    const btn = (id, start, end) => {
+    // CONTROLS
+    const handleAction = (id, start, end) => {
         const el = document.getElementById(id);
         el.addEventListener('touchstart', (e) => { e.preventDefault(); start(); });
-        el.addEventListener('touchend', (e) => { e.preventDefault(); if(end) end(); });
+        if (end) el.addEventListener('touchend', (e) => { e.preventDefault(); end(); });
     };
 
-    btn('lBtn', () => { player.dx = -7; player.facing = -1; }, () => { player.dx = 0; });
-    btn('rBtn', () => { player.dx = 7; player.facing = 1; }, () => { player.dx = 0; });
-    btn('jumpBtn', () => { if(!player.jumping){ player.dy = -26; player.jumping=true; } });
-    btn('shootBtn', () => shoot());
+    handleAction('lBtn', () => { dx = -6; facing = -1; }, () => { dx = 0; });
+    handleAction('rBtn', () => { dx = 6; facing = 1; }, () => { dx = 0; });
+    handleAction('jumpBtn', () => { if (!isJumping) { dy = -25; isJumping = true; } });
+    handleAction('shootBtn', () => {
+        bullets.push({ x: playerX + (facing === 1 ? 80 : 0), y: playerY + 65, v: facing * 12 });
+    });
 
-    // Splash Screen
-    const ms = document.getElementById('mission');
-    ms.style.display = 'block';
-    setTimeout(() => { ms.style.display = 'none'; loop(); }, 1500);
-
+    loop();
 </script>
 </body>
 </html>
