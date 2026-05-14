@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Metal Sahur - Fix</title>
+    <title>Metal Sahur HD</title>
     <style>
         :root { --safe-bottom: env(safe-area-inset-bottom, 30px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #000; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', Courier, monospace; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #0d0d1a; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; }
         canvas { display: block; image-rendering: pixelated; }
         
-        /* UI HUD */
-        #hud { position: absolute; top: 40px; width: 100%; display: flex; justify-content: space-around; color: #0f0; font-size: 1.5rem; text-shadow: 2px 2px 0 #000; z-index: 10; pointer-events: none; }
-        
-        /* CONTROLS - Positioned for iPad Thumbs */
+        /* HIGH QUALITY UI */
+        #hud { position: absolute; top: 40px; width: 100%; display: flex; justify-content: space-around; color: #fff; font-size: 1.2rem; z-index: 10; pointer-events: none; text-shadow: 2px 2px 0 #b33939; }
+        #boss-ui { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: none; text-align: center; }
+        #boss-hp-bar { width: 100%; height: 14px; background: #222; border: 2px solid #fff; box-shadow: 0 0 10px #f00; }
+        #boss-hp-fill { width: 100%; height: 100%; background: linear-gradient(to bottom, #ff5252, #b33939); }
+
+        /* RETRO ARCADE CONTROLS */
         .controls { position: absolute; bottom: calc(var(--safe-bottom) + 100px); width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 100; }
-        .dir-pad { display: flex; gap: 15px; }
-        .btn { width: 90px; height: 90px; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #222; color: #fff; box-shadow: 4px 4px 0 #555; border-radius: 10px; }
-        #jumpBtn { border-color: #0ff; color: #0ff; }
-        #shootBtn { border-color: #f00; color: #f00; width: 110px; height: 110px; font-size: 1.2rem; }
-        .btn:active { transform: translate(2px, 2px); box-shadow: none; background: #444; }
+        .btn { width: 95px; height: 95px; border: 5px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #222; color: #fff; border-radius: 15px; box-shadow: 0 6px 0 #555; }
+        #jumpBtn { border-color: #33d9b2; color: #33d9b2; }
+        #shootBtn { border-color: #ff5252; color: #ff5252; width: 120px; height: 120px; border-radius: 50%; font-size: 1.4rem; box-shadow: 0 8px 0 #8a1a1a; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #444; }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>SCORE: <span id="score">0</span></div>
-        <div>HP: <span id="hp">3</span></div>
+        <div>POINTS: <span id="score">0</span></div>
+        <div>HP: <span id="hp">100</span></div>
+        <div>BOSS: <span id="timer">60</span>s</div>
+    </div>
+
+    <div id="boss-ui">
+        <div style="color:#ff5252; font-weight:bold; letter-spacing: 3px; font-size: 1.2rem;">BOSS: GOLIATH TANK</div>
+        <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
     </div>
 
     <div class="controls">
-        <div class="dir-pad">
+        <div class="dir-pad" style="display:flex; gap:20px;">
             <div class="btn" id="lBtn">LEFT</div>
             <div class="btn" id="rBtn">RIGHT</div>
         </div>
@@ -43,132 +51,182 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    let w, h, groundY, score = 0, hp = 3, frame = 0;
-    let enemies = [], bullets = [], playerX = 100, playerY = 0, dy = 0, dx = 0;
-    let facing = 1, isJumping = false;
+    let w, h, groundY, score = 0, hp = 100, frame = 0, seconds = 0, shake = 0;
+    let enemies = [], bullets = [], enemyBullets = [], boss = null;
+    let px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
 
     function resize() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h * 0.8;
+        groundY = h * 0.78;
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // DRAW PIXEL TUNG TUNG (Since PNG might be blocked)
-    function drawPlayer(x, y, dir) {
+    // --- HIGH QUALITY PIXEL DRAWING ---
+    function drawTungTung(x, y, dir) {
         ctx.save();
-        ctx.translate(x + 60, y + 60);
+        ctx.translate(x + 50, y + 50);
         if (dir === -1) ctx.scale(-1, 1);
         
-        // Body (The Log Shape)
-        ctx.fillStyle = '#d2b48c';
-        ctx.fillRect(-30, -50, 60, 100);
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
-        ctx.strokeRect(-30, -50, 60, 100);
+        // Body (Detailed Log with Grain)
+        ctx.fillStyle = '#8b5a2b'; ctx.fillRect(-25, -45, 50, 90); // Main body
+        ctx.fillStyle = '#a67c52'; ctx.fillRect(-20, -40, 5, 80);  // Grain detail
+        ctx.fillStyle = '#6d4521'; ctx.fillRect(15, -40, 5, 80);   // Shadow edge
         
-        // Eyes (Classic Stare)
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(-20, -35, 15, 15); ctx.fillRect(5, -35, 15, 15);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(-15, -30, 6, 6); ctx.fillRect(10, -30, 6, 6);
-
-        // Gun
-        ctx.fillStyle = '#555';
-        ctx.fillRect(20, 0, 30, 10);
+        // Face Mask
+        ctx.fillStyle = '#222'; ctx.fillRect(-25, -35, 50, 25);
+        ctx.fillStyle = '#fff'; ctx.fillRect(-18, -30, 12, 12); ctx.fillRect(6, -30, 12, 12); // Eyes
+        ctx.fillStyle = '#33d9b2'; ctx.fillRect(-14, -26, 4, 4); ctx.fillRect(10, -26, 4, 4); // Glowing pupils
+        
+        // Detailed Gun
+        ctx.fillStyle = '#2c2c2c'; ctx.fillRect(10, 0, 45, 15); // Barrel
+        ctx.fillStyle = '#111'; ctx.fillRect(15, 10, 8, 20); // Handle
+        ctx.fillStyle = '#ff5252'; ctx.fillRect(45, 2, 5, 5); // Laser sight
         
         ctx.restore();
     }
 
+    function drawEnemy(en) {
+        ctx.save();
+        ctx.translate(en.x + en.w/2, en.y + en.h/2);
+        ctx.fillStyle = en.color; ctx.fillRect(-en.w/2, -en.h/2, en.w, en.h);
+        // Helmet detail
+        ctx.fillStyle = '#111'; ctx.fillRect(-en.w/2, -en.h/2, en.w, 20);
+        ctx.fillStyle = en.hp > 1 ? '#fff' : '#f00'; ctx.fillRect(-10, -10, 20, 5); // Visor
+        ctx.restore();
+    }
+
     function spawnEnemy() {
-        if (frame % 100 === 0) {
-            enemies.push({ x: w, y: groundY - 80, w: 50, h: 80, speed: 3 + Math.random() * 2 });
-        }
+        if (boss || frame % 70 !== 0) return;
+        const types = [
+            { name: 'Grunt', color: '#4b7bec', hp: 1, speed: 6, jump: false }, 
+            { name: 'Heavy', color: '#45aaf2', hp: 5, speed: 2.5, jump: false },  
+            { name: 'Nin', color: '#a55eea', hp: 1, speed: 10, jump: true } 
+        ];
+        const t = types[Math.floor(Math.random() * types.length)];
+        enemies.push({ x: w, y: groundY - 80, w: 55, h: 80, ...t, dy: 0 });
     }
 
     function update() {
         frame++;
-        dy += 1.2; // Gravity
-        playerY += dy;
-        playerX += dx;
-
-        if (playerY > groundY - 110) {
-            playerY = groundY - 110;
-            dy = 0;
-            isJumping = false;
+        if (shake > 0) shake--;
+        if (frame % 60 === 0) {
+            seconds++;
+            let timeLeft = 60 - (seconds % 60);
+            document.getElementById('timer').innerText = timeLeft;
+            if (seconds > 0 && seconds % 60 === 0 && !boss) {
+                boss = { x: w + 200, y: groundY - 200, w: 300, h: 200, hp: 80, maxHp: 80 };
+                document.getElementById('boss-ui').style.display = 'block';
+            }
         }
-        if (playerX < 0) playerX = 0;
-        if (playerX > w - 120) playerX = w - 120;
 
-        // Update Bullets
+        dy += 1.4; py += dy; px += dx;
+        if (py > groundY - 100) { py = groundY - 100; dy = 0; isJumping = false; }
+        px = Math.max(0, Math.min(w - 100, px));
+
+        // Bullets
         bullets.forEach((b, i) => {
             b.x += b.v;
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         });
 
-        // Update Enemies
-        enemies.forEach((en, i) => {
-            en.x -= en.speed;
-            
-            // Bullet Collision
+        // Boss
+        if (boss) {
+            if (boss.x > w - 350) boss.x -= 1.2;
+            if (frame % 70 === 0) enemyBullets.push({ x: boss.x, y: boss.y + 80, vx: -12, size: 30 });
             bullets.forEach((b, bi) => {
-                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
-                    enemies.splice(i, 1);
-                    bullets.splice(bi, 1);
-                    score += 100;
-                    document.getElementById('score').innerText = score;
+                if (b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) {
+                    boss.hp--; bullets.splice(bi, 1);
+                    document.getElementById('boss-hp-fill').style.width = (boss.hp / boss.maxHp * 100) + "%";
+                    if (boss.hp <= 0) { boss = null; score += 15000; shake = 30; document.getElementById('boss-ui').style.display = 'none'; }
                 }
             });
+        }
 
-            // Player Collision
-            if (playerX + 40 > en.x && playerX < en.x + en.w && playerY + 100 > en.y) {
-                enemies.splice(i, 1);
-                hp--;
-                document.getElementById('hp').innerText = hp;
-                if (hp <= 0) location.reload();
+        // Enemies
+        enemies.forEach((en, i) => {
+            en.x -= en.speed;
+            if (en.jump && frame % 90 === 0 && en.y >= groundY - en.h) en.dy = -20;
+            if (en.jump) { en.dy += 1.2; en.y += en.dy; if(en.y > groundY - en.h) en.y = groundY - en.h; }
+            bullets.forEach((b, bi) => {
+                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                    en.hp--; bullets.splice(bi, 1);
+                    if (en.hp <= 0) { enemies.splice(i, 1); score += 300; }
+                }
+            });
+            if (px + 40 > en.x && px < en.x + en.w && py + 80 > en.y) {
+                hp -= 0.5; document.getElementById('hp').innerText = Math.floor(hp);
             }
         });
+
+        // Enemy Projectiles
+        enemyBullets.forEach((eb, i) => {
+            eb.x += eb.vx;
+            if (eb.x + eb.size < 0) enemyBullets.splice(i, 1);
+            if (eb.x < px + 60 && eb.x + eb.size > px && eb.y < py + 90 && eb.y + eb.size > py) {
+                hp -= 20; enemyBullets.splice(i, 1); shake = 10;
+                document.getElementById('hp').innerText = Math.floor(hp);
+            }
+        });
+
+        if (hp <= 0) location.reload();
+        document.getElementById('score').innerText = score;
     }
 
     function draw() {
-        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, w, h); // BG
-        ctx.fillStyle = '#333'; ctx.fillRect(0, groundY, w, h - groundY); // Floor
-        ctx.strokeStyle = '#0f0'; ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(w, groundY); ctx.stroke();
+        ctx.save();
+        if (shake > 0) ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
 
-        drawPlayer(playerX, playerY, facing);
+        // --- HIGH QUALITY BACKGROUND ---
+        ctx.fillStyle = '#0d0d1a'; ctx.fillRect(0, 0, w, h);
+        // Distant Parallax Stars
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<30; i++) ctx.fillRect((i*150 - frame*0.5)%w, (i*43)%h, 2, 2);
+        
+        // Ground with Perspective
+        ctx.fillStyle = '#1e272e'; ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.strokeStyle = '#34e7e4'; ctx.lineWidth = 2;
+        for(let i=0; i<w; i+=100) {
+            let offset = (frame * 6) % 100;
+            ctx.strokeRect(i - offset, groundY, 100, h - groundY);
+        }
+
+        drawTungTung(px, py, facing);
 
         bullets.forEach(b => {
-            ctx.fillStyle = '#ff0';
-            ctx.fillRect(b.x, b.y, 15, 5);
+            ctx.fillStyle = '#fff'; ctx.fillRect(b.x, b.y, 25, 4);
+            ctx.fillStyle = '#34e7e4'; ctx.fillRect(b.x - 5, b.y - 1, 30, 6);
         });
 
-        enemies.forEach(en => {
-            ctx.fillStyle = '#8b0000'; // Dark Red Soldier
-            ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = '#fff'; ctx.fillRect(en.x + 10, en.y + 10, 8, 8); // Eye
+        enemyBullets.forEach(eb => {
+            ctx.fillStyle = '#ff5e57'; ctx.fillRect(eb.x, eb.y, eb.size, eb.size);
+            ctx.strokeStyle = '#fff'; ctx.strokeRect(eb.x, eb.y, eb.size, eb.size);
         });
+
+        enemies.forEach(en => drawEnemy(en));
+
+        if (boss) {
+            ctx.fillStyle = '#2f3542'; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+            ctx.fillStyle = '#57606f'; ctx.fillRect(boss.x - 40, boss.y + 60, 80, 50); // Cannon
+            ctx.strokeStyle = '#ff4757'; ctx.lineWidth = 6; ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
+        }
+
+        ctx.restore();
     }
 
-    function loop() {
-        update();
-        draw();
-        spawnEnemy();
-        requestAnimationFrame(loop);
-    }
+    function loop() { update(); draw(); spawnEnemy(); requestAnimationFrame(loop); }
 
-    // CONTROLS
-    const handleAction = (id, start, end) => {
+    const input = (id, s, e) => {
         const el = document.getElementById(id);
-        el.addEventListener('touchstart', (e) => { e.preventDefault(); start(); });
-        if (end) el.addEventListener('touchend', (e) => { e.preventDefault(); end(); });
+        el.addEventListener('touchstart', (ev) => { ev.preventDefault(); s(); });
+        if(e) el.addEventListener('touchend', (ev) => { ev.preventDefault(); e(); });
     };
 
-    handleAction('lBtn', () => { dx = -6; facing = -1; }, () => { dx = 0; });
-    handleAction('rBtn', () => { dx = 6; facing = 1; }, () => { dx = 0; });
-    handleAction('jumpBtn', () => { if (!isJumping) { dy = -25; isJumping = true; } });
-    handleAction('shootBtn', () => {
-        bullets.push({ x: playerX + (facing === 1 ? 80 : 0), y: playerY + 65, v: facing * 12 });
-    });
+    input('lBtn', () => { dx = -9; facing = -1; }, () => { dx = 0; });
+    input('rBtn', () => { dx = 9; facing = 1; }, () => { dx = 0; });
+    input('jumpBtn', () => { if (!isJumping) { dy = -28; isJumping = true; } });
+    input('shootBtn', () => { bullets.push({ x: px + (facing === 1 ? 90 : 0), y: py + 55, v: facing * 20 }); });
 
     loop();
 </script>
