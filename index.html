@@ -3,60 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Metal Sahur: Boss Countdown</title>
+    <title>Metal Sahur: Elite Combat</title>
     <style>
         :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #d1d1d1; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #c0c0c0; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; }
         canvas { display: block; image-rendering: pixelated; }
         
         #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 0.9rem; z-index: 10; pointer-events: none; font-weight: bold; color: #000; }
         #boss-ui { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 280px; text-align: center; display: none; }
         #boss-hp-bar { width: 100%; height: 12px; background: #fff; border: 3px solid #000; margin-top: 5px; }
-        #boss-hp-fill { width: 100%; height: 100%; background: #f00; }
+        #boss-hp-fill { width: 100%; height: 100%; background: #ff0000; transition: width 0.3s; }
 
-        #shop-menu { position: absolute; inset: 0; background: rgba(240,240,240,0.98); z-index: 1000; display: none; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; }
-        .shop-section { width: 90%; max-width: 400px; margin-bottom: 20px; }
-        .shop-item { background: #fff; border: 3px solid #000; padding: 10px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; font-size: 0.8rem; }
-        .shop-item button { background: #000; color: #fff; border: none; padding: 8px 12px; font-weight: bold; }
+        #shop-menu { position: absolute; inset: 0; background: rgba(230,230,230,0.98); z-index: 1000; display: none; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; }
+        .shop-section { width: 90%; max-width: 400px; margin-bottom: 20px; border: 2px solid #000; padding: 10px; background: #fff; }
+        .shop-item { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; font-weight: bold; }
+        .shop-item button { background: #000; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; }
         
         #shop-btn { position: absolute; top: 15px; right: 15px; background: #000; color: #fff; padding: 10px 15px; border-radius: 8px; z-index: 20; border: none; font-weight: bold; }
 
         .controls { position: absolute; bottom: calc(var(--safe-bottom) + 30px); width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; }
         .move-group { display: flex; gap: 10px; align-items: center; }
-        .btn { width: 70px; height: 70px; border: 4px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(255,255,255,0.9); border-radius: 12px; font-size: 0.7rem; }
+        .btn { width: 70px; height: 70px; border: 4px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(255,255,255,0.9); border-radius: 12px; }
         #shootBtn { border-color: #ff0000; color: #ff0000; width: 90px; height: 90px; border-radius: 50%; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>$ <span id="score">0</span></div>
-        <div>ARMOR: <span id="armor">0</span></div>
+        <div>CASH: $<span id="score">0</span></div>
         <div>HP: <span id="hp">100</span></div>
-        <div style="color: #d00;">BOSS IN: <span id="timer">60</span>s</div>
+        <div style="color: #c00;">BOSS ARRIVAL: <span id="timer">60</span>s</div>
     </div>
 
     <div id="boss-ui">
-        <div style="font-weight:bold; color:red;">GOLIATH MK-II ACTIVE</div>
+        <div id="boss-title" style="font-weight:bold; color:red; font-size: 0.7rem;"></div>
         <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
     </div>
 
-    <button id="shop-btn" onclick="toggleShop()">SHOP</button>
+    <button id="shop-btn" onclick="toggleShop()">OPEN ARMORY</button>
 
     <div id="shop-menu">
-        <h2 style="margin-top:0">BATTLE ARMORY</h2>
+        <h1 style="margin-top:0">UPGRADE WEAPONS</h1>
+        
         <div class="shop-section">
-            <div class="shop-item"><span>PISTOL</span><button onclick="buyWeapon(0)">EQUIP</button></div>
-            <div class="shop-item"><span>SMG</span><button onclick="buyWeapon(1)" id="w-1">$1200</button></div>
-            <div class="shop-item"><span>SHOTGUN</span><button onclick="buyWeapon(2)" id="w-2">$2500</button></div>
-            <div class="shop-item"><span>SNIPER</span><button onclick="buyWeapon(3)" id="w-3">$4000</button></div>
-            <div class="shop-item"><span>PLASMA</span><button onclick="buyWeapon(4)" id="w-4">$7000</button></div>
+            <h3 style="margin:0 0 10px 0">ARSENAL</h3>
+            <div class="shop-item"><span>PISTOL</span><button onclick="selectWeapon(0)">EQUIP</button></div>
+            <div class="shop-item"><span>SMG</span><button onclick="buyWeapon(1)" id="w1">$1500</button></div>
+            <div class="shop-item"><span>SNIPER</span><button onclick="buyWeapon(2)" id="w2">$4000</button></div>
         </div>
+
         <div class="shop-section">
-            <div class="shop-item"><span>ARMOR (+50)</span><button onclick="buyArmor()">$1000</button></div>
-            <div class="shop-item"><span>MED-KIT</span><button onclick="buyHeal()">$500</button></div>
+            <h3 style="margin:0 0 10px 0">PERKS</h3>
+            <div class="shop-item"><span>RAPID FIRE (Lv <span id="rateLv">1</span>)</span><button onclick="upgrade('rate')" id="u-rate">$800</button></div>
+            <div class="shop-item"><span>FIRE POWER (Lv <span id="dmgLv">1</span>)</span><button onclick="upgrade('dmg')" id="u-dmg">$1000</button></div>
+            <div class="shop-item"><span>MED-KIT</span><button onclick="buyHeal()">$400</button></div>
         </div>
-        <button onclick="toggleShop()" style="padding: 15px 40px; background: #000; color: #fff; border:none; border-radius:8px; font-weight:bold;">RESUME</button>
+
+        <button onclick="toggleShop()" style="padding: 15px 50px; background: #000; color: #fff; border:none; border-radius:8px; font-weight:bold;">RETURN TO BATTLE</button>
     </div>
 
     <div class="controls">
@@ -73,20 +76,19 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    let w, h, groundY, score = 0, hp = 100, armor = 0, frame = 0, paused = false;
-    let enemies = [], bullets = [], enemyBullets = [];
+    let w, h, groundY, score = 0, hp = 100, frame = 0, paused = false;
+    let enemies = [], bullets = [], enemyBullets = [], worldLevel = 1, countdown = 60;
     let px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
-    let boss = null, worldLevel = 1, shootHeat = 0, countdown = 60;
+    let boss = null, shootHeat = 0;
 
-    const weapons = [
-        { name: 'Pistol', dmg: 1.2, heat: 18, cool: 1.2, multi: 1 },
-        { name: 'SMG', dmg: 1, heat: 10, cool: 1.8, multi: 1 },
-        { name: 'Shotgun', dmg: 2.5, heat: 35, cool: 0.8, multi: 3 },
-        { name: 'Sniper', dmg: 6, heat: 45, cool: 0.6, multi: 1 },
-        { name: 'Plasma', dmg: 10, heat: 55, cool: 0.4, multi: 1 }
+    // Upgrade Stats
+    let stats = { rateLv: 1, dmgLv: 1, rateCost: 800, dmgCost: 1000 };
+    let weaponStats = [
+        { name: 'Pistol', dmg: 1.5, heat: 20, multi: 1, owned: true },
+        { name: 'SMG', dmg: 1.1, heat: 12, multi: 1, owned: false },
+        { name: 'Sniper', dmg: 7.0, heat: 50, multi: 1, owned: false }
     ];
-    let currentWeapon = 0;
-    let ownedWeapons = [true, false, false, false, false];
+    let activeWep = 0;
 
     function resize() {
         w = canvas.width = window.innerWidth;
@@ -96,32 +98,49 @@
     window.addEventListener('resize', resize);
     resize();
 
-    function toggleShop() { paused = !paused; document.getElementById('shop-menu').style.display = paused ? 'flex' : 'none'; }
-    function buyWeapon(idx) {
-        const prices = [0, 1200, 2500, 4000, 7000];
-        if (!ownedWeapons[idx] && score >= prices[idx]) { score -= prices[idx]; ownedWeapons[idx] = true; document.getElementById('w-'+idx).innerText = "EQUIP"; }
-        else if (ownedWeapons[idx]) currentWeapon = idx;
+    function toggleShop() { 
+        paused = !paused; 
+        document.getElementById('shop-menu').style.display = paused ? 'flex' : 'none'; 
     }
-    function buyArmor() { if(score >= 1000) { score -= 1000; armor += 50; } }
-    function buyHeal() { if(score >= 500) { score -= 500; hp = 100; } }
 
-    function takeDamage(amt) {
-        if (armor > 0) { armor -= amt; if (armor < 0) { hp += armor; armor = 0; } }
-        else hp -= amt;
+    function buyWeapon(idx) {
+        const prices = [0, 1500, 4000];
+        if (score >= prices[idx]) {
+            score -= prices[idx];
+            weaponStats[idx].owned = true;
+            document.getElementById('w'+idx).innerText = "EQUIP";
+            selectWeapon(idx);
+        }
     }
+
+    function selectWeapon(idx) { if(weaponStats[idx].owned) activeWep = idx; }
+
+    function upgrade(type) {
+        if (type === 'rate' && score >= stats.rateCost) {
+            score -= stats.rateCost; stats.rateLv++; stats.rateCost *= 2;
+            document.getElementById('rateLv').innerText = stats.rateLv;
+            document.getElementById('u-rate').innerText = "$" + stats.rateCost;
+        } else if (type === 'dmg' && score >= stats.dmgCost) {
+            score -= stats.dmgCost; stats.dmgLv++; stats.dmgCost *= 2;
+            document.getElementById('dmgLv').innerText = stats.dmgLv;
+            document.getElementById('u-dmg').innerText = "$" + stats.dmgCost;
+        }
+    }
+
+    function buyHeal() { if(score >= 400) { score -= 400; hp = 100; } }
 
     function update() {
         if (paused) return;
         frame++;
-        shootHeat = Math.max(0, shootHeat - weapons[currentWeapon].cool);
+        shootHeat = Math.max(0, shootHeat - (1.2 + stats.rateLv * 0.2));
 
-        // Boss Countdown Logic
         if (frame % 60 === 0 && !boss) {
             countdown--;
             document.getElementById('timer').innerText = countdown;
             if (countdown <= 0) {
-                boss = { x: w, y: groundY - 180, w: 180, h: 180, hp: 300 * worldLevel, max: 300 * worldLevel, atkTimer: 0 };
+                boss = { x: w, y: groundY - 180, w: 180, h: 180, hp: 400 * worldLevel, max: 400 * worldLevel, phase: 0 };
                 document.getElementById('boss-ui').style.display = 'block';
+                document.getElementById('boss-title').innerText = "TITAN UNIT REV-" + worldLevel;
                 countdown = 60;
             }
         }
@@ -130,108 +149,132 @@
         if (py > groundY - 80) { py = groundY - 80; dy = 0; isJumping = false; }
         px = Math.max(0, Math.min(w - 80, px));
 
-        // Spawning with logic: Monsters get powerful based on WorldLevel
-        if (frame % Math.max(30, 90 - worldLevel * 10) === 0 && !boss) {
+        // Spawning Elite Monsters
+        if (frame % Math.max(30, 80 - worldLevel * 10) === 0 && !boss) {
             const types = [
-                {c:'#d32f2f', h:3, s:4, gear:'helmet'},
-                {c:'#7b1fa2', h:2, s:6, gear:'wings'},
-                {c:'#1976d2', h:5, s:2, gear:'shield'}
+                {c:'#2b2b2b', h:4, s:4, type:'shooter'},
+                {c:'#8a0000', h:2, s:7, type:'charger'},
+                {c:'#004d00', h:10, s:2, type:'tank'}
             ];
             const t = types[Math.floor(Math.random() * types.length)];
-            enemies.push({ x: w, y: groundY-70, w:45, h:70, color:t.c, hp:t.h * worldLevel, speed:t.s + worldLevel, gear:t.gear });
+            enemies.push({ 
+                x: w, y: groundY - 70, w: 45, h: 70, 
+                color: t.c, hp: t.h * worldLevel, 
+                speed: t.s + (worldLevel * 0.5), behavior: t.type,
+                shootTimer: 0
+            });
         }
 
-        // Projectiles
-        for(let i = bullets.length-1; i>=0; i--) {
+        // Projectiles Collision
+        for(let i = bullets.length - 1; i >= 0; i--) {
             let b = bullets[i]; b.x += b.v;
             if (boss && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y) {
                 boss.hp -= b.dmg; bullets.splice(i, 1);
-                document.getElementById('boss-hp-fill').style.width = (boss.hp/boss.max*100) + "%";
+                document.getElementById('boss-hp-fill').style.width = (boss.hp / boss.max * 100) + "%";
                 if (boss.hp <= 0) { boss = null; score += 5000; worldLevel++; document.getElementById('boss-ui').style.display = 'none'; }
                 continue;
             }
-            enemies.forEach((en, j) => { if(b.x > en.x && b.x < en.x+en.w && b.y > en.y) { en.hp -= b.dmg; bullets.splice(i, 1); if(en.hp <= 0) { enemies.splice(j, 1); score += 200; } } });
+            enemies.forEach((en, j) => {
+                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y) {
+                    en.hp -= b.dmg; bullets.splice(i, 1);
+                    if (en.hp <= 0) { enemies.splice(j, 1); score += 250; }
+                }
+            });
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         }
 
-        // Boss Figure Logic (Moves and shoots)
+        // Boss Combat Logic
         if (boss) {
             if (boss.x > w - 240) boss.x -= 2;
-            boss.atkTimer++;
-            if (boss.atkTimer % 100 === 0) {
-                enemyBullets.push({ x: boss.x, y: boss.y + 100, vx: -10 });
-                if (worldLevel > 1) enemyBullets.push({ x: boss.x, y: boss.y + 50, vx: -12 });
+            if (frame % 80 === 0) { // Boss can definitely hit the player
+                enemyBullets.push({ x: boss.x, y: boss.y + 100, vx: -12, vy: 0, color: '#f0f' });
+                if (boss.hp < boss.max / 2) enemyBullets.push({ x: boss.x, y: boss.y + 40, vx: -14, vy: 1 });
             }
         }
 
-        enemyBullets.forEach((eb, i) => { eb.x += eb.vx; if(eb.x > px && eb.x < px+60 && eb.y > py && eb.y < py+80) { takeDamage(25); enemyBullets.splice(i, 1); } });
-        enemies.forEach(en => { 
-            en.x -= en.speed; 
-            if(en.gear === 'wings' && frame % 60 === 0) en.y = groundY - 120 + Math.sin(frame/10)*20;
-            if(px+45 > en.x && px < en.x+en.w && py+75 > en.y) takeDamage(1.5 * worldLevel); 
+        // Enemy Combat Logic
+        enemies.forEach((en, idx) => {
+            en.x -= en.speed;
+            if (en.behavior === 'shooter') {
+                en.shootTimer++;
+                if (en.shootTimer % 100 === 0) enemyBullets.push({ x: en.x, y: en.y + 20, vx: -8, vy: 0, color: '#f00' });
+            }
+            if (en.behavior === 'charger' && en.x < px + 300 && frame % 60 === 0) en.speed = 12;
+            
+            // Touch Damage
+            if (px + 45 > en.x && px < en.x + en.w && py + 75 > en.y) hp -= 1 * worldLevel;
         });
 
-        if (hp <= 0) location.reload();
+        // Player Hit Check
+        enemyBullets.forEach((eb, i) => {
+            eb.x += eb.vx; eb.y += eb.vy || 0;
+            if (eb.x > px && eb.x < px + 60 && eb.y > py && eb.y < py + 80) {
+                hp -= 15; enemyBullets.splice(i, 1);
+            }
+            if (eb.x < -50 || eb.x > w + 50) enemyBullets.splice(i, 1);
+        });
+
+        if (hp <= 0) { alert("SQUAD WIPED. MISSION FAILED."); location.reload(); }
         document.getElementById('score').innerText = score;
         document.getElementById('hp').innerText = Math.max(0, Math.floor(hp));
-        document.getElementById('armor').innerText = Math.floor(armor);
     }
 
     function draw() {
-        ctx.fillStyle = '#d1d1d1'; ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.fillStyle = '#c0c0c0'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#333'; ctx.fillRect(0, groundY, w, h - groundY);
         
-        ctx.fillStyle = '#333'; ctx.fillRect(px+5, py-20, 50, 8);
-        ctx.fillStyle = shootHeat > 80 ? '#f00' : '#ff0'; ctx.fillRect(px+5, py-20, (shootHeat/100)*50, 8);
+        // Heat / Reload UI
+        ctx.fillStyle = '#555'; ctx.fillRect(px + 5, py - 20, 50, 8);
+        ctx.fillStyle = shootHeat > 85 ? '#f00' : '#0f0'; ctx.fillRect(px + 5, py - 20, (shootHeat/100)*50, 8);
 
         // Player
-        ctx.save(); ctx.translate(px+40, py+40); if(facing === -1) ctx.scale(-1, 1);
-        if(armor > 0) { ctx.strokeStyle = '#00f'; ctx.lineWidth = 4; ctx.strokeRect(-24, -40, 48, 80); }
-        ctx.fillStyle = '#222'; ctx.fillRect(-22, -38, 44, 76); 
-        ctx.fillStyle = '#fff'; ctx.fillRect(-12, -24, 8, 8); ctx.fillRect(4, -24, 8, 8);
+        ctx.save(); ctx.translate(px + 40, py + 40); if (facing === -1) ctx.scale(-1, 1);
+        ctx.fillStyle = '#111'; ctx.fillRect(-22, -38, 44, 76); 
+        ctx.fillStyle = '#fff'; ctx.fillRect(-12, -24, 8, 8); ctx.fillRect(4, -24, 8, 8); // Eyes
         ctx.restore();
 
-        bullets.forEach(b => { ctx.fillStyle = '#000'; ctx.fillRect(b.x, b.y, 25, 8); });
-        enemyBullets.forEach(eb => { ctx.fillStyle = '#f0f'; ctx.beginPath(); ctx.arc(eb.x, eb.y, 10, 0, Math.PI*2); ctx.fill(); });
-
-        // Monsters with Outfits
-        enemies.forEach(en => {
-            ctx.fillStyle = en.color; ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = '#000';
-            if(en.gear === 'helmet') ctx.fillRect(en.x, en.y, en.w, 15);
-            if(en.gear === 'shield') ctx.fillRect(en.x - 10, en.y + 10, 10, 50);
-            if(en.gear === 'wings') { ctx.fillRect(en.x - 15, en.y + 20, 15, 10); ctx.fillRect(en.x + en.w, en.y + 20, 15, 10); }
+        bullets.forEach(b => { ctx.fillStyle = '#ff0'; ctx.fillRect(b.x, b.y, 25, 8); });
+        enemyBullets.forEach(eb => { 
+            ctx.fillStyle = eb.color; ctx.beginPath(); ctx.arc(eb.x, eb.y, 10, 0, Math.PI*2); ctx.fill(); 
         });
 
-        // Boss Figure (Mechanical Turret Style)
+        enemies.forEach(en => {
+            ctx.fillStyle = en.color; ctx.fillRect(en.x, en.y, en.w, en.h);
+            ctx.strokeStyle = '#000'; ctx.strokeRect(en.x, en.y, en.w, en.h);
+            ctx.fillStyle = '#f00'; ctx.fillRect(en.x + 5, en.y + 10, 8, 8); // Monster Eye
+        });
+
         if (boss) {
-            ctx.fillStyle = '#333';
-            ctx.fillRect(boss.x, boss.y + 60, boss.w, boss.h - 60); // Base
-            ctx.fillStyle = '#111';
-            ctx.fillRect(boss.x - 40, boss.y + 90, 60, 30); // Main Gun
-            ctx.fillStyle = '#f00';
-            ctx.beginPath(); ctx.arc(boss.x + 90, boss.y + 100, 30, 0, Math.PI*2); ctx.fill(); // Glowing Core
-            ctx.strokeStyle = '#000'; ctx.strokeRect(boss.x, boss.y + 60, boss.w, boss.h - 60);
+            ctx.fillStyle = '#222'; ctx.fillRect(boss.x, boss.y + 40, boss.w, boss.h - 40);
+            ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(boss.x + 50, boss.y + 100, 25, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(boss.x, boss.y + 40, boss.w, boss.h - 40);
         }
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
+
     const ctrl = (id, s, e) => {
         const el = document.getElementById(id);
         el.addEventListener('touchstart', (ev) => { ev.preventDefault(); s(); });
         if(e) el.addEventListener('touchend', (ev) => { ev.preventDefault(); e(); });
     };
+
     ctrl('lBtn', () => { dx = -8; facing = -1; }, () => { dx = 0; });
     ctrl('rBtn', () => { dx = 8; facing = 1; }, () => { dx = 0; });
     ctrl('jumpBtn', () => { if (!isJumping) { dy = -28; isJumping = true; } });
     ctrl('shootBtn', () => {
-        const wp = weapons[currentWeapon];
-        if (shootHeat < 95) {
-            for(let i=0; i<wp.multi; i++) bullets.push({ x: px+(facing===1?70:10), y: py+45+(i*10-(wp.multi-1)*5), v: facing*18, dmg: wp.dmg });
+        const wp = weaponStats[activeWep];
+        if (shootHeat < 98) {
+            bullets.push({ 
+                x: px + (facing === 1 ? 70 : 10), 
+                y: py + 45, 
+                v: facing * 20, 
+                dmg: wp.dmg + (stats.dmgLv * 0.5) 
+            });
             shootHeat += wp.heat;
         }
     });
+
     loop();
 </script>
 </body>
