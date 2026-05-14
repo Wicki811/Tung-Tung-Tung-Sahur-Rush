@@ -3,148 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Store Defense: Grand Opening</title>
+    <title>Pixel Sahur: Sigma Defense</title>
     <style>
-        :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #b71c1c; touch-action: none; -webkit-user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        canvas { display: block; image-rendering: auto; }
+        :root { --kfc-red: #d32f2f; --kfc-white: #eeeeee; --sigma-gold: #ffbc0d; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; image-rendering: pixelated; margin: 0 auto; background: #000; }
         
-        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 1.1rem; z-index: 10; pointer-events: none; color: #fff; text-shadow: 2px 2px #000; font-weight: bold; }
-        #wave-ui { position: absolute; top: 60px; width: 100%; text-align: center; font-size: 1.4rem; color: #ffeb3b; font-weight: bold; text-shadow: 2px 2px #000; }
+        /* UI Styling */
+        #hud { position: absolute; top: 15px; width: 100%; display: flex; justify-content: space-around; z-index: 10; pointer-events: none; color: white; font-weight: bold; font-size: 14px; text-shadow: 2px 2px #000; }
+        #timer-display { position: absolute; top: 50px; width: 100%; text-align: center; color: var(--sigma-gold); font-size: 24px; font-weight: bold; text-shadow: 2px 2px #000; }
         
-        #shop-menu { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; padding: 20px; color: white; }
-        .shop-section { width: 90%; max-width: 400px; margin-bottom: 15px; border: 2px solid #fff; padding: 15px; background: #333; border-radius: 10px; }
-        .shop-item { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
-        .shop-item button { background: #4caf50; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #rest-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 500; color: white; text-align: center; }
+        #shop-menu { position: absolute; inset: 0; background: #222; z-index: 1000; display: none; flex-direction: column; align-items: center; padding: 20px; border: 4px solid var(--kfc-red); color: white; }
         
-        #shop-btn { position: absolute; top: 15px; right: 15px; background: #fff; color: #b71c1c; padding: 10px 20px; border-radius: 5px; z-index: 20; border: none; font-weight: bold; }
-        .controls { position: absolute; bottom: calc(var(--safe-bottom) + 20px); width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
-        .btn { width: 70px; height: 70px; background: rgba(255,255,255,0.2); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
-        #shootBtn { width: 90px; height: 90px; background: rgba(255,255,255,0.4); border: 3px solid #ffeb3b; }
+        .btn-ui { background: var(--kfc-red); color: white; border: 3px solid #fff; padding: 10px 20px; font-family: inherit; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        #shop-trigger { position: absolute; top: 15px; right: 15px; z-index: 20; background: var(--sigma-gold); color: #000; }
+
+        /* Mobile Controls */
+        .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 25px; box-sizing: border-box; }
+        .d-pad { display: flex; gap: 10px; }
+        .ctrl-btn { width: 65px; height: 65px; background: rgba(255,255,255,0.15); border: 3px solid #fff; border-radius: 8px; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        #fire-btn { width: 85px; height: 85px; border-radius: 50%; background: var(--kfc-red); border-color: var(--sigma-gold); }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>SALES: $<span id="score">0</span></div>
-        <div>LV: <span id="player-lv">1</span></div>
+        <div>CASH: $<span id="score">0</span></div>
+        <div>LV: <span id="lv">1</span></div>
         <div>HP: <span id="hp">100</span></div>
     </div>
 
-    <div id="wave-ui">WAVE <span id="wave-num">1</span></div>
+    <div id="timer-display">01:00</div>
 
-    <button id="shop-btn" onclick="toggleShop()">UPGRADES</button>
+    <div id="rest-overlay">
+        <h1 style="color: var(--sigma-gold)">WAVE CLEAR</h1>
+        <p>RE-STOCKING... PREPARE FOR NEXT SHIFT</p>
+        <button class="btn-ui" onclick="startWave()">START NEXT WAVE</button>
+    </div>
+
+    <button id="shop-trigger" class="btn-ui" onclick="toggleShop()">OPEN SHOP</button>
 
     <div id="shop-menu">
-        <h1>STORE UPGRADES</h1>
-        <div class="shop-section">
-            <div class="shop-item"><span>PROMOTION (LV UP)</span><button onclick="levelUp()" id="lvlBtn">$1000</button></div>
-            <div class="shop-item"><span>CHICKEN BLASTER</span><button onclick="buyWeapon(1)" id="w1">$1500</button></div>
-            <div class="shop-item"><span>GRAVY CANNON</span><button onclick="buyWeapon(2)" id="w2">$5000</button></div>
+        <h2 style="color:var(--kfc-red)">KFC PIXEL ARMORY</h2>
+        <div style="width: 100%; max-width: 350px;">
+            <p>LEVEL UP: <button class="btn-ui" onclick="buyLevel()" id="lvl-cost">$2000</button></p>
+            <p>SAHUR'S STICK (NUKE): <button class="btn-ui" onclick="buyNuke()" id="nuke-btn">$25000</button></p>
+            <p>FRENCH FRIES (HEAL): <button class="btn-ui" onclick="buyFries()">$600</button></p>
         </div>
-        <div class="shop-section">
-            <div class="shop-item"><span>FRENCH FRIES (HEAL)</span><button onclick="buyHeal()">$400</button></div>
-        </div>
-        <button onclick="toggleShop()" style="margin-top: 20px; padding: 15px 40px;">RESUME DEFENSE</button>
+        <button class="btn-ui" style="margin-top:20px; background:#555" onclick="toggleShop()">RESUME</button>
     </div>
 
     <div class="controls">
-        <div style="display: flex; gap: 10px;">
-            <div class="btn" id="lBtn">LEFT</div>
-            <div class="btn" id="jumpBtn">JUMP</div>
-            <div class="btn" id="rBtn">RIGHT</div>
+        <div class="d-pad">
+            <div class="ctrl-btn" id="lBtn">LEFT</div>
+            <div class="ctrl-btn" id="jBtn">JUMP</div>
+            <div class="ctrl-btn" id="rBtn">RIGHT</div>
         </div>
-        <div class="btn" id="shootBtn">FIRE</div>
+        <div class="ctrl-btn" id="fire-btn">TUNG!</div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="game"></canvas>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
+    const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    let w, h, groundY, score = 0, hp = 100, frame = 0, paused = false;
-    let enemies = [], bullets = [], wave = 1, enemiesToSpawn = 8;
-    let px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
-    let pLevel = 1, pSpeed = 8, pLvlCost = 1000, activeWep = 0;
-
+    let w, h, groundY;
+    let score = 0, hp = 100, wave = 1, timeLeft = 60, frame = 0;
+    let px = 100, py = 0, dx = 0, dy = 0, facing = 1, isJumping = false;
+    let pLv = 1, pSpeed = 8, activeWep = 0, isResting = false, paused = false;
+    
+    let enemies = [], bullets = [], enemyBullets = [];
     const weapons = [
-        { name: 'Basic', dmg: 10, speed: 15, size: 8, color: '#fff' },
-        { name: 'Blaster', dmg: 18, speed: 20, size: 10, color: '#ffeb3b' },
-        { name: 'Cannon', dmg: 50, speed: 12, size: 25, color: '#795548' }
+        { dmg: 25, size: 8, speed: 15, nuke: false, color: '#fff' },
+        { dmg: 9999, size: 60, speed: 20, nuke: true, color: '#ffbc0d' }
     ];
-    let ownedWeapons = [true, false, false];
+    let hasNuke = false;
 
-    function resize() {
+    function init() {
         w = canvas.width = window.innerWidth;
         h = canvas.height = window.innerHeight;
-        groundY = h * 0.85;
+        groundY = h * 0.8;
+        loop();
     }
-    window.addEventListener('resize', resize);
-    resize();
 
-    function toggleShop() { paused = !paused; document.getElementById('shop-menu').style.display = paused ? 'flex' : 'none'; }
-    
-    function levelUp() {
-        if (score >= pLvlCost) {
-            score -= pLvlCost; pLevel++; pSpeed += 1; pLvlCost *= 2;
-            document.getElementById('player-lv').innerText = pLevel;
-            document.getElementById('lvlBtn').innerText = "$" + pLvlCost;
+    function toggleShop() { 
+        paused = !paused; 
+        document.getElementById('shop-menu').style.display = paused ? 'flex' : 'none'; 
+    }
+
+    function startWave() {
+        isResting = false;
+        timeLeft = 60;
+        enemies = [];
+        enemyBullets = [];
+        document.getElementById('rest-overlay').style.display = 'none';
+    }
+
+    function buyLevel() {
+        let cost = 2000 * pLv;
+        if (score >= cost) {
+            score -= cost; pLv++; pSpeed += 1.5;
+            document.getElementById('lv').innerText = pLv;
+            document.getElementById('lvl-cost').innerText = "$" + (2000 * pLv);
         }
     }
 
-    function buyWeapon(idx) {
-        const prices = [0, 1500, 5000];
-        if (score >= prices[idx] && !ownedWeapons[idx]) {
-            score -= prices[idx]; ownedWeapons[idx] = true;
-            activeWep = idx;
-        } else if (ownedWeapons[idx]) activeWep = idx;
+    function buyNuke() {
+        if (score >= 25000) { score -= 25000; hasNuke = true; activeWep = 1; document.getElementById('nuke-btn').innerText = "OWNED"; }
     }
 
-    function buyHeal() { if (score >= 400) { score -= 400; hp = 100; } }
+    function buyFries() { if (score >= 600) { score -= 600; hp = 100; } }
 
     function update() {
-        if (paused) return;
+        if (paused || isResting) return;
         frame++;
 
-        // Physics
-        dy += 1.2; py += dy; px += dx;
-        if (py > groundY - 70) { py = groundY - 70; dy = 0; isJumping = false; }
-        px = Math.max(0, Math.min(w - 50, px));
+        if (frame % 60 === 0) {
+            timeLeft--;
+            document.getElementById('timer-display').innerText = `00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
+            if (timeLeft <= 0) {
+                isResting = true;
+                wave++;
+                document.getElementById('rest-overlay').style.display = 'flex';
+            }
+        }
+
+        // Player Physics
+        dy += 1.5; py += dy; px += dx;
+        if (py > groundY - 60) { py = groundY - 60; dy = 0; isJumping = false; }
+        px = Math.max(0, Math.min(w - 40, px));
 
         // Spawning
-        if (enemiesToSpawn > 0 && frame % 100 === 0) {
-            enemies.push({ x: w, y: groundY - 80, w: 50, h: 80, hp: 30 + wave * 10, speed: 2 + Math.random() * 2 });
-            enemiesToSpawn--;
+        if (frame % Math.max(15, 60 - wave*5) === 0) {
+            const isBoss = (frame % 800 === 0);
+            enemies.push({
+                x: w, y: groundY - (isBoss ? 120 : 70),
+                w: isBoss ? 80 : 50, h: isBoss ? 120 : 70,
+                hp: (isBoss ? 2000 : 100) + wave * 50,
+                speed: isBoss ? 2 : 4 + Math.random() * 2,
+                isBoss: isBoss,
+                dashCooldown: 0
+            });
         }
 
         // Bullets
         bullets.forEach((b, i) => {
             b.x += b.v;
             enemies.forEach((en, j) => {
-                if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                if (b.x > en.x && b.x < en.x+en.w && b.y > en.y && b.y < en.y+en.h) {
                     en.hp -= b.dmg;
-                    bullets.splice(i, 1);
-                    if (en.hp <= 0) { enemies.splice(j, 1); score += 200; }
+                    if (!b.nuke) bullets.splice(i, 1);
+                    if (en.hp <= 0) { enemies.splice(j, 1); score += en.isBoss ? 5000 : 250; }
                 }
             });
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         });
 
         // Enemies
-        enemies.forEach((en, i) => {
+        enemies.forEach(en => {
             en.x -= en.speed;
-            if (en.x < px + 40 && en.x + en.w > px && py + 70 > en.y) {
-                hp -= 0.5;
+            
+            if (en.isBoss) {
+                if (frame % 70 === 0) enemyBullets.push({x: en.x, y: en.y + 40, vx: -12});
+            } else {
+                en.dashCooldown++;
+                if (en.dashCooldown % 120 === 0) en.x -= 80; // Tackle Dash
             }
-            if (en.x < -50) { enemies.splice(i, 1); hp -= 10; }
+
+            if (px < en.x + en.w && px + 40 > en.x && py < en.y + en.h && py + 60 > en.y) {
+                hp -= en.isBoss ? 2 : 0.5;
+            }
         });
 
-        // Wave reset
-        if (enemiesToSpawn === 0 && enemies.length === 0) {
-            wave++;
-            enemiesToSpawn = 8 + wave * 2;
-            document.getElementById('wave-num').innerText = wave;
-        }
+        enemyBullets.forEach((eb, i) => {
+            eb.x += eb.vx;
+            if (px < eb.x + 10 && px + 40 > eb.x && py < eb.y + 10 && py + 60 > eb.y) {
+                hp -= 20; enemyBullets.splice(i, 1);
+            }
+        });
 
         if (hp <= 0) location.reload();
         document.getElementById('score').innerText = score;
@@ -152,55 +189,57 @@
     }
 
     function draw() {
-        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, w, h);
         
-        // Floor
-        ctx.fillStyle = '#424242';
-        ctx.fillRect(0, groundY, w, h - groundY);
+        // Pixel Ground
+        ctx.fillStyle = '#333'; ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY, w, 4);
 
-        // Player (Store Worker)
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px, py, 40, 70); // Shirt
-        ctx.fillStyle = '#d32f2f';
-        ctx.fillRect(px, py, 40, 10); // Red Cap
-        ctx.fillStyle = '#000';
-        ctx.fillRect(px + (facing === 1 ? 30 : 0), py + 30, 20, 10); // Spatula/Weapon
+        // Player (KFC Worker Pixel Art)
+        ctx.fillStyle = '#fff'; ctx.fillRect(px, py, 40, 60); // Body
+        ctx.fillStyle = '#d32f2f'; ctx.fillRect(px, py, 40, 8); // Hat
+        ctx.fillStyle = '#000'; ctx.fillRect(px + (facing === 1 ? 30 : 0), py + 30, 15, 6); // Stick
 
-        // Enemies (Crowd)
+        // Enemies
         enemies.forEach(en => {
-            ctx.fillStyle = '#1565c0';
-            ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = '#ff0000'; // Health bar
-            ctx.fillRect(en.x, en.y - 10, en.w * (en.hp/(30 + wave * 10)), 5);
+            if (en.isBoss) {
+                // Sigma Boss (Suit)
+                ctx.fillStyle = '#000'; ctx.fillRect(en.x, en.y, en.w, en.h);
+                ctx.fillStyle = '#fff'; ctx.fillRect(en.x + 30, en.y + 20, 20, 40); // Tuxedo shirt
+            } else {
+                // Fat Monster (Dark Pixel Outfit)
+                ctx.fillStyle = '#111'; ctx.fillRect(en.x, en.y, en.w, en.h);
+                ctx.fillStyle = '#222'; ctx.fillRect(en.x + 10, en.y + 10, en.w - 20, en.h - 20);
+            }
         });
 
-        // Bullets
+        // VFX
         bullets.forEach(b => {
             ctx.fillStyle = b.color;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.size, 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill();
+        });
+        enemyBullets.forEach(eb => {
+            ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(eb.x, eb.y, 10, 0, Math.PI*2); ctx.fill();
         });
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
 
-    // Input
-    const ctrl = (id, s, e) => {
+    const input = (id, s, e) => {
         const el = document.getElementById(id);
         el.addEventListener('touchstart', (ev) => { ev.preventDefault(); s(); });
         if(e) el.addEventListener('touchend', (ev) => { ev.preventDefault(); e(); });
     };
 
-    ctrl('lBtn', () => { dx = -pSpeed; facing = -1; }, () => dx = 0);
-    ctrl('rBtn', () => { dx = pSpeed; facing = 1; }, () => dx = 0);
-    ctrl('jumpBtn', () => { if(!isJumping) { dy = -22; isJumping = true; } });
-    ctrl('shootBtn', () => {
+    input('lBtn', () => { dx = -pSpeed; facing = -1; }, () => dx = 0);
+    input('rBtn', () => { dx = pSpeed; facing = 1; }, () => dx = 0);
+    input('jBtn', () => { if (!isJumping) { dy = -25; isJumping = true; } });
+    input('fire-btn', () => {
         const wp = weapons[activeWep];
-        bullets.push({ x: px + 20, y: py + 35, v: facing * wp.speed, dmg: wp.dmg, size: wp.size, color: wp.color });
+        bullets.push({ x: px + 20, y: py + 30, v: facing * wp.speed, dmg: wp.dmg, size: wp.size, nuke: wp.nuke, color: wp.color });
     });
 
-    loop();
+    init();
 </script>
 </body>
 </html>
