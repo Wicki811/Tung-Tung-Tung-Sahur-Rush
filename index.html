@@ -3,51 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Metal Sahur: Visible & Lethal</title>
+    <title>Metal Sahur: Boss Evolution</title>
     <style>
         :root { --safe-bottom: env(safe-area-inset-bottom, 20px); }
-        body { margin: 0; padding: 0; overflow: hidden; background: #e0e0e0; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; color: #000; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #d1d1d1; touch-action: none; -webkit-user-select: none; font-family: 'Courier New', monospace; }
         canvas { display: block; image-rendering: pixelated; }
         
-        /* HUD with dark text for light background */
-        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 1rem; z-index: 10; pointer-events: none; font-weight: bold; color: #222; }
-        
-        #boss-ui { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 240px; text-align: center; display: none; }
-        #boss-hp-bar { width: 100%; height: 12px; background: #fff; border: 3px solid #000; margin-top: 5px; }
-        #boss-hp-fill { width: 100%; height: 100%; background: #ff0000; }
+        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; font-size: 1rem; z-index: 10; pointer-events: none; font-weight: bold; color: #000; text-shadow: 1px 1px #fff; }
+        #boss-ui { position: absolute; top: 65px; left: 50%; transform: translateX(-50%); width: 280px; text-align: center; display: none; }
+        #boss-hp-bar { width: 100%; height: 14px; background: #fff; border: 3px solid #000; margin-top: 5px; }
+        #boss-hp-fill { width: 100%; height: 100%; background: #ff0000; transition: width 0.2s; }
 
-        #shop-menu { position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; color: #000; }
-        .shop-item { background: #fff; border: 3px solid #000; padding: 12px; margin: 6px; width: 240px; display: flex; justify-content: space-between; border-radius: 8px; font-weight: bold; }
+        #shop-menu { position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .shop-item { background: #fff; border: 3px solid #000; padding: 12px; margin: 6px; width: 250px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .shop-item button { background: #000; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; }
         
-        #shop-btn { position: absolute; top: 15px; right: 15px; background: #000; color: #fff; padding: 8px 16px; font-size: 0.8rem; border-radius: 4px; z-index: 20; border: none; font-weight: bold; }
+        #shop-btn { position: absolute; top: 15px; right: 15px; background: #000; color: #fff; padding: 10px 20px; border-radius: 8px; z-index: 20; border: none; font-weight: bold; }
 
         .controls { position: absolute; bottom: calc(var(--safe-bottom) + 30px); width: 100%; display: flex; justify-content: space-between; padding: 0 25px; box-sizing: border-box; z-index: 100; }
-        .btn { width: 68px; height: 68px; border: 4px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(255,255,255,0.8); color: #000; border-radius: 12px; font-size: 0.7rem; }
-        #shootBtn { border-color: #ff0000; color: #ff0000; width: 85px; height: 85px; border-radius: 50%; font-size: 1rem; background: #fff; }
+        .btn { width: 70px; height: 70px; border: 4px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; background: rgba(255,255,255,0.9); border-radius: 15px; }
+        #shootBtn { border-color: #ff0000; color: #ff0000; width: 90px; height: 90px; border-radius: 50%; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>SCORE: <span id="score">0</span></div>
-        <div>LV: <span id="game-lv">1</span></div>
+        <div>CASH: $<span id="score">0</span></div>
+        <div>WAVE: <span id="game-lv">1</span></div>
         <div>HP: <span id="hp">100</span></div>
-        <div>BOSS: <span id="boss-timer">60</span>s</div>
+        <div>NEXT BOSS: <span id="boss-timer">60</span>s</div>
     </div>
 
     <div id="boss-ui">
-        <div style="font-weight:bold; color:#ff0000; text-transform: uppercase;">Boss Emerging</div>
+        <div id="boss-name" style="font-weight:bold; color:#ff0000; letter-spacing: 2px;">BOSS UNIT</div>
         <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
     </div>
 
-    <button id="shop-btn" onclick="toggleShop()">ARMORY</button>
+    <button id="shop-btn" onclick="toggleShop()">UPGRADES</button>
 
     <div id="shop-menu">
-        <h2>BATTLE SHOP</h2>
-        <div class="shop-item"><span>RELOAD</span><button onclick="buy('rate')" id="b-rate">500</button></div>
-        <div class="shop-item"><span>POWER</span><button onclick="buy('dmg')" id="b-dmg">800</button></div>
-        <div class="shop-item"><span>REPAIR</span><button onclick="buy('heal')">300</button></div>
-        <button onclick="toggleShop()" style="margin-top: 25px; padding: 12px 40px; background: #000; color: #fff; border:none; font-weight:bold;">BACK TO FIGHT</button>
+        <h1 style="color:#000">FIELD ARMORY</h1>
+        <div class="shop-item"><span>QUICK COOL</span><button onclick="buy('rate')" id="b-rate">500</button></div>
+        <div class="shop-item"><span>HEAVY AMMO</span><button onclick="buy('dmg')" id="b-dmg">800</button></div>
+        <div class="shop-item"><span>MED-KIT</span><button onclick="buy('heal')">300</button></div>
+        <button onclick="toggleShop()" style="margin-top: 30px; padding: 15px 50px; background: #000; color: #fff; border:none; font-weight:bold; border-radius:10px;">RESUME MISSION</button>
     </div>
 
     <div class="controls">
@@ -68,7 +67,7 @@
     let enemies = [], bullets = [], enemyBullets = [];
     let px = 100, py = 0, dy = 0, dx = 0, facing = 1, isJumping = false;
     let boss = null, up = { rate: 1, dmg: 1, rP: 500, dP: 800 };
-    let gameLevel = 1, eSpeed = 1, eHP = 1, shootHeat = 0;
+    let worldLevel = 1, shootHeat = 0;
 
     function resize() {
         w = canvas.width = window.innerWidth;
@@ -86,27 +85,33 @@
     }
 
     function buy(t) {
-        if (t === 'rate' && score >= up.rP) { score -= up.rP; up.rate++; up.rP *= 2; }
-        if (t === 'dmg' && score >= up.dP) { score -= up.dP; up.dmg++; up.dP *= 2; }
+        if (t === 'rate' && score >= up.rP) { score -= up.rP; up.rate++; up.rP = Math.floor(up.rP * 2.5); }
+        if (t === 'dmg' && score >= up.dP) { score -= up.dP; up.dmg++; up.dP = Math.floor(up.dP * 2.5); }
         if (t === 'heal' && score >= 300) { score -= 300; hp = 100; }
         toggleShop(); toggleShop();
+    }
+
+    function spawnArmy() {
+        for(let i=0; i<3; i++) {
+            enemies.push({ x: w + (i*60), y: groundY-70, w:45, h:70, color:'#000', hp: 2*worldLevel, speed: 4, ability:'none', dy:0 });
+        }
     }
 
     function update() {
         if (paused) return;
         frame++;
-        if (shootHeat > 0) shootHeat -= (0.5 + up.rate * 0.2);
+        if (shootHeat > 0) shootHeat -= (0.5 + up.rate * 0.3);
 
         if (frame % 60 === 0) {
             seconds++;
             document.getElementById('boss-timer').innerText = 60 - (seconds % 60);
-            if (seconds % 60 === 0) {
-                gameLevel++; eSpeed += 0.2; eHP += 0.5;
-                document.getElementById('game-lv').innerText = gameLevel;
-                if (!boss) {
-                    boss = { x: w, y: groundY - 150, w: 180, h: 150, hp: 80 * eHP, max: 80 * eHP };
-                    document.getElementById('boss-ui').style.display = 'block';
-                }
+            if (seconds > 0 && seconds % 60 === 0 && !boss) {
+                boss = { 
+                    x: w, y: groundY - 160, w: 200, h: 160, 
+                    hp: 150 * worldLevel, max: 150 * worldLevel, 
+                    state: 'idle', stateTimer: 0 
+                };
+                document.getElementById('boss-ui').style.display = 'block';
             }
         }
 
@@ -114,109 +119,130 @@
         if (py > groundY - 80) { py = groundY - 80; dy = 0; isJumping = false; }
         px = Math.max(0, Math.min(w - 80, px));
 
-        // Enemy Spawning
-        if (frame % Math.max(25, 100 - (gameLevel * 5)) === 0 && !boss) {
+        // Enemy Spawning (World Level affects difficulty)
+        if (frame % Math.max(20, 100 - (worldLevel * 10)) === 0 && !boss) {
             const types = [
-                {c:'#008000', h:1, s:3.5, a:'none'},
-                {c:'#ff0000', h:1, s:5, a:'jump'},
-                {c:'#ff8c00', h:2, s:2, a:'shoot'},
-                {c:'#4b0082', h:4, s:1.5, a:'none'}
+                {c:'#2e7d32', h:2, s:3+worldLevel, a:'none'},      // Grunt
+                {c:'#c62828', h:1, s:5+worldLevel, a:'jump'},     // Runner
+                {c:'#f9a825', h:3, s:2, a:'shoot'},               // Marksman
+                {c:'#000000', h:6, s:1.5, a:'none'}               // Heavy
             ];
             const t = types[Math.floor(Math.random() * types.length)];
-            enemies.push({ 
-                x: w, y: groundY - 70, w: 45, h: 70, 
-                color: t.c, hp: t.h * eHP, speed: t.s * eSpeed, 
-                ability: t.a, dy: 0 
-            });
+            enemies.push({ x: w, y: groundY - 70, w: 45, h: 70, color: t.c, hp: t.h + worldLevel, speed: t.s, ability: t.a, dy: 0 });
         }
 
-        // Move Player Bullets
+        // Bullets & Collision
         for(let i = bullets.length - 1; i >= 0; i--) {
-            let b = bullets[i];
-            b.x += b.v;
-            
-            // Kill Boss
-            if (boss && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) {
-                boss.hp -= up.dmg;
-                bullets.splice(i, 1);
+            let b = bullets[i]; b.x += b.v;
+            if (boss && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y) {
+                boss.hp -= up.dmg; bullets.splice(i, 1);
                 document.getElementById('boss-hp-fill').style.width = (boss.hp/boss.max*100) + "%";
-                if (boss.hp <= 0) { boss = null; score += 5000; document.getElementById('boss-ui').style.display = 'none'; }
+                if (boss.hp <= 0) { 
+                    boss = null; score += 5000; worldLevel++; 
+                    document.getElementById('boss-ui').style.display = 'none'; 
+                    document.getElementById('game-lv').innerText = worldLevel;
+                }
                 continue;
             }
-
-            // Kill Monsters
             for(let j = enemies.length - 1; j >= 0; j--) {
                 let en = enemies[j];
                 if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
-                    en.hp -= up.dmg;
-                    bullets.splice(i, 1);
-                    if (en.hp <= 0) { enemies.splice(j, 1); score += 100; }
+                    en.hp -= up.dmg; bullets.splice(i, 1);
+                    if (en.hp <= 0) { enemies.splice(j, 1); score += 150; }
                     break;
                 }
             }
             if (b.x > w || b.x < 0) bullets.splice(i, 1);
         }
 
-        // Enemy Bullets
-        enemyBullets.forEach((eb, i) => {
-            eb.x += eb.vx;
-            if (eb.x < 0 || eb.x > w) enemyBullets.splice(i, 1);
-            if (eb.x > px && eb.x < px + 60 && eb.y > py && eb.y < py + 80) {
-                hp -= 15; enemyBullets.splice(i, 1);
-            }
-        });
-
+        // Boss AI Logic
         if (boss) {
-            if (boss.x > w - 250) boss.x -= 1;
-            if (frame % 80 === 0) enemyBullets.push({ x: boss.x, y: boss.y + 70, vx: -8 });
-            if (px + 60 > boss.x && px < boss.x + boss.w && py + 80 > boss.y) hp -= 0.5;
+            boss.stateTimer++;
+            if (boss.state === 'idle') {
+                if (boss.x > w - 250) boss.x -= 2;
+                if (boss.stateTimer > 100) {
+                    const r = Math.random();
+                    if (r < 0.3) boss.state = 'rush';
+                    else if (r < 0.6) boss.state = 'fireball';
+                    else boss.state = 'summon';
+                    boss.stateTimer = 0;
+                }
+            } else if (boss.state === 'rush') {
+                boss.x -= 12; // High speed rush
+                if (boss.x < -200) { boss.x = w; boss.state = 'idle'; boss.stateTimer = 0; }
+            } else if (boss.state === 'fireball') {
+                if (boss.stateTimer === 30) {
+                    enemyBullets.push({ x: boss.x, y: boss.y + 50, vx: -12, size: 50, color: '#ff4500' });
+                }
+                if (boss.stateTimer > 60) { boss.state = 'idle'; boss.stateTimer = 0; }
+            } else if (boss.state === 'summon') {
+                if (boss.stateTimer === 30) spawnArmy();
+                if (boss.stateTimer > 60) { boss.state = 'idle'; boss.stateTimer = 0; }
+            }
+            if (px + 50 > boss.x && px < boss.x + boss.w && py + 70 > boss.y) hp -= 2;
         }
 
-        enemies.forEach((en, i) => {
-            en.x -= en.speed;
-            if (en.ability === 'jump' && frame % 100 === 0 && en.dy === 0) en.dy = -15;
-            if (en.ability === 'shoot' && frame % 120 === 0) enemyBullets.push({ x: en.x, y: en.y + 20, vx: -6 });
-            if (en.dy !== 0 || en.y < groundY - 70) {
-                en.dy += 1; en.y += en.dy;
-                if (en.y > groundY - 70) { en.y = groundY - 70; en.dy = 0; }
+        // Enemy Actions & Player Damage
+        enemyBullets.forEach((eb, i) => {
+            eb.x += eb.vx;
+            let sz = eb.size || 10;
+            if (eb.x < -100) enemyBullets.splice(i, 1);
+            if (eb.x > px && eb.x < px + 60 && eb.y > py && eb.y < py + 80) {
+                hp -= (eb.size ? 40 : 15 + worldLevel); enemyBullets.splice(i, 1);
             }
-            // Player collision damage
-            if (px + 45 > en.x && px < en.x + en.w && py + 75 > en.y) hp -= 0.5;
         });
 
-        if (hp <= 0) { alert("MISSION FAILED! SCORE: " + score); location.reload(); }
+        enemies.forEach(en => {
+            en.x -= en.speed;
+            if (en.ability === 'jump' && frame % 80 === 0 && en.dy === 0) en.dy = -18;
+            if (en.ability === 'shoot' && frame % 90 === 0) enemyBullets.push({ x: en.x, y: en.y + 20, vx: -7 - worldLevel });
+            if (en.dy !== 0 || en.y < groundY-70) { en.dy += 1.2; en.y += en.dy; if (en.y > groundY-70) { en.y = groundY-70; en.dy = 0; } }
+            if (px + 45 > en.x && px < en.x + en.w && py + 75 > en.y) hp -= 1;
+        });
+
+        if (hp <= 0) { alert("SQUAD WIPED. FINAL WORLD LEVEL: " + worldLevel); location.reload(); }
         document.getElementById('score').innerText = score;
         document.getElementById('hp').innerText = Math.max(0, Math.floor(hp));
     }
 
     function draw() {
-        ctx.fillStyle = '#e0e0e0'; ctx.fillRect(0, 0, w, h); // Lighter Background
-        ctx.fillStyle = '#666'; ctx.fillRect(0, groundY, w, h - groundY); // Ground
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(0, groundY, w, 2);
+        ctx.fillStyle = '#d1d1d1'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#444'; ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(0, groundY, w, 4);
+
+        // Player Heat Bar
+        if (shootHeat > 0) {
+            ctx.fillStyle = '#333'; ctx.fillRect(px + 5, py - 20, 50, 8);
+            ctx.fillStyle = shootHeat > 80 ? '#f00' : '#ff0'; ctx.fillRect(px + 5, py - 20, (shootHeat/100)*50, 8);
+        }
 
         // Player
         ctx.save(); ctx.translate(px + 40, py + 40); if (facing === -1) ctx.scale(-1, 1);
-        ctx.fillStyle = '#333'; ctx.fillRect(-22, -38, 44, 76); // Dark body
-        ctx.fillStyle = '#00f'; ctx.fillRect(-12, -24, 8, 8); ctx.fillRect(4, -24, 8, 8); // Eyes
-        ctx.fillStyle = '#000'; ctx.fillRect(15, 0, 30, 10); // Gun
+        ctx.fillStyle = '#222'; ctx.fillRect(-22, -38, 44, 76); 
+        ctx.fillStyle = '#fff'; ctx.fillRect(-12, -24, 8, 8); ctx.fillRect(4, -24, 8, 8);
+        ctx.fillStyle = '#000'; ctx.fillRect(15, 0, 30, 12);
         ctx.restore();
 
-        // High-Vis Bullets
-        bullets.forEach(b => { ctx.fillStyle = '#ff0'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.fillRect(b.x, b.y, 20, 8); ctx.strokeRect(b.x, b.y, 20, 8); });
-        enemyBullets.forEach(eb => { ctx.fillStyle = '#f0f'; ctx.strokeStyle = '#000'; ctx.beginPath(); ctx.arc(eb.x, eb.y, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
+        bullets.forEach(b => { ctx.fillStyle = '#000'; ctx.fillRect(b.x, b.y, 25, 8); });
+        
+        enemyBullets.forEach(eb => { 
+            ctx.fillStyle = eb.color || '#ff00ff';
+            let sz = eb.size || 12;
+            ctx.beginPath(); ctx.arc(eb.x, eb.y, sz, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+        });
 
-        // High-Vis Monsters
         enemies.forEach(en => {
-            ctx.fillStyle = en.color; 
-            ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-            ctx.strokeRect(en.x, en.y, en.w, en.h); // Thick black outline
-            ctx.fillStyle = '#fff'; ctx.fillRect(en.x + 5, en.y + 10, 10, 10); // Glow Eye
+            ctx.fillStyle = en.color; ctx.fillRect(en.x, en.y, en.w, en.h);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeRect(en.x, en.y, en.w, en.h);
+            ctx.fillStyle = '#fff'; ctx.fillRect(en.x+5, en.y+5, 8, 8); // Eyes
         });
 
         if (boss) { 
-            ctx.fillStyle = '#222'; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
-            ctx.strokeStyle = '#f00'; ctx.lineWidth = 5; ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
+            ctx.fillStyle = boss.state === 'rush' ? '#f00' : '#222';
+            ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 6; ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
+            if(boss.state === 'fireball') { ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.arc(boss.x, boss.y+80, 30, 0, Math.PI*2); ctx.fill(); }
         }
     }
 
@@ -228,11 +254,11 @@
     };
     ctrl('lBtn', () => { dx = -8; facing = -1; }, () => { dx = 0; });
     ctrl('rBtn', () => { dx = 8; facing = 1; }, () => { dx = 0; });
-    ctrl('jumpBtn', () => { if (!isJumping) { dy = -27; isJumping = true; } });
+    ctrl('jumpBtn', () => { if (!isJumping) { dy = -28; isJumping = true; } });
     ctrl('shootBtn', () => {
         if (shootHeat < 95) {
             bullets.push({ x: px + (facing === 1 ? 70 : 10), y: py + 45, v: facing * 18 });
-            shootHeat += (26 - up.rate * 2);
+            shootHeat += (28 - up.rate * 3);
         }
     });
     loop();
